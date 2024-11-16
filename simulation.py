@@ -153,51 +153,63 @@ class SwarmSimulation:
             return self.MAX_AGENTS
         return count
 
-    def set_parameter(self, name: str, value: float):
-        """Update simulation parameter"""
+    def set_parameter(self, name: str, value: float) -> bool:
+        """Update simulation parameter with enhanced validation and logging"""
         try:
-            if name in self.parameters:
-                old_value = self.parameters[name]
-                new_value = float(value)
-                
-                if name == 'agentCount':
-                    new_value = self._validate_agent_count(int(new_value))
-                    logger.info(f"Agent count parameter update: {old_value} -> {new_value}")
-                    if new_value != old_value:
-                        self.parameters[name] = new_value
-                        self.reset()
-                else:
-                    self.parameters[name] = new_value
-                    logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
-                return True
-            else:
+            if name not in self.parameters:
                 logger.warning(f"Attempted to set unknown parameter: {name}")
                 return False
+
+            old_value = self.parameters[name]
+            new_value = float(value)
+            
+            # Special handling for agent count
+            if name == 'agentCount':
+                new_value = self._validate_agent_count(int(new_value))
+                logger.info(f"Agent count update request: {old_value} -> {new_value}")
+                
+                if new_value != old_value:
+                    logger.info(f"Applying new agent count: {new_value}")
+                    self.parameters[name] = new_value
+                    self.reset()
+                    logger.info(f"Reset completed with new agent count: {len(self.agents)}")
+                else:
+                    logger.debug(f"Agent count unchanged: {new_value}")
+            else:
+                # Handle other parameters
+                self.parameters[name] = new_value
+                logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
+            
+            return True
+            
         except ValueError as e:
             logger.error(f"Error setting parameter {name}: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error setting parameter {name}: {str(e)}")
             return False
 
     def start(self):
         """Start simulation"""
         self.running = True
-        print("Simulation started")
+        logger.info("Simulation started")
 
     def stop(self):
         """Stop simulation"""
         self.running = False
-        print("Simulation stopped")
+        logger.info("Simulation stopped")
 
     def start_recording(self):
         """Start recording agent states"""
         if not self.playback_mode:
             self.recording = True
             self.recorded_states = []
-            print("Recording started")
+            logger.info("Recording started")
 
     def stop_recording(self):
         """Stop recording agent states"""
         self.recording = False
-        print("Recording stopped")
+        logger.info("Recording stopped")
 
     def save_recording(self) -> List[Dict]:
         """Return recorded states"""
@@ -206,7 +218,7 @@ class SwarmSimulation:
     def load_recording(self, states: List[Dict]):
         """Load recorded states for playback"""
         self.playback_states = states
-        print(f"Loaded {len(states)} recorded states")
+        logger.info(f"Loaded {len(states)} recorded states")
 
     def start_playback(self):
         """Start playback mode"""
@@ -214,37 +226,13 @@ class SwarmSimulation:
             self.playback_mode = True
             self.playback_index = 0
             self.running = True
-            print("Playback started")
+            logger.info("Playback started")
 
     def stop_playback(self):
         """Stop playback mode"""
         self.playback_mode = False
         self.playback_index = 0
-        print("Playback stopped")
-
-    def set_parameter(self, name: str, value: float):
-        """Update simulation parameter"""
-        try:
-            if name in self.parameters:
-                old_value = self.parameters[name]
-                new_value = float(value)
-                
-                if name == 'agentCount':
-                    new_value = self._validate_agent_count(int(new_value))
-                    logger.info(f"Agent count parameter update: {old_value} -> {new_value}")
-                    if new_value != old_value:
-                        self.parameters[name] = new_value
-                        self.reset()
-                else:
-                    self.parameters[name] = new_value
-                    logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
-                return True
-            else:
-                logger.warning(f"Attempted to set unknown parameter: {name}")
-                return False
-        except ValueError as e:
-            logger.error(f"Error setting parameter {name}: {str(e)}")
-            return False
+        logger.info("Playback stopped")
 
     def set_pattern(self, pattern: str):
         """Change swarm behavior pattern"""
@@ -257,7 +245,7 @@ class SwarmSimulation:
             self.last_pattern_change = current_time
             
         self.current_pattern = pattern
-        print(f"Pattern changed to {pattern}")
+        logger.info(f"Pattern changed to {pattern}")
 
     def get_analytics(self) -> Dict:
         """Get current analytics data"""
@@ -271,7 +259,7 @@ class SwarmSimulation:
         """Main simulation loop"""
         last_update = time.time()
         updates_count = 0
-        print("Simulation loop started")
+        logger.info("Simulation loop started")
         
         while True:
             if self.running:
@@ -302,10 +290,10 @@ class SwarmSimulation:
                 
                 updates_count += 1
                 if updates_count % 100 == 0:
-                    print(f"Simulation running: {updates_count} updates completed")
+                    logger.debug(f"Simulation running: {updates_count} updates completed")
                     if self.agents:
                         agent = self.agents[0]
-                        print(f"Sample agent position: x={agent.x:.2f}, y={agent.y:.2f}, angle={agent.angle:.2f}")
+                        logger.debug(f"Sample agent position: x={agent.x:.2f}, y={agent.y:.2f}, angle={agent.angle:.2f}")
                         
             time.sleep(1/60)  # 60 FPS target
 
@@ -366,8 +354,8 @@ class SwarmSimulation:
             dy = target_y - self._formation_center['y']
             dist = math.sqrt(dx*dx + dy*dy)
             if dist > 0:
-                self._formation_center['x'] += (dx/dist) * speed * 0.5
-                self._formation_center['y'] += (dy/dist) * speed * 0.5
+                self._formation_center['x'] = self._formation_center['x'] + (dx/dist) * speed * 0.5
+                self._formation_center['y'] = self._formation_center['y'] + (dy/dist) * speed * 0.5
 
             # Arrange prey in arrow formation
             formation_radius = 30 + num_prey * 2
