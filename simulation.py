@@ -112,9 +112,7 @@ class SwarmSimulation:
                 return False
 
             if name == 'agentCount':
-                logger.debug(f"Received agent count update: {value}")
                 self.parameters[name] = int(value)
-                logger.debug(f"Setting agent count to: {self.parameters[name]}")
                 self.reset()
                 return True
             
@@ -160,9 +158,6 @@ class SwarmSimulation:
                 angle=random.uniform(0, 2 * math.pi),
                 role='normal'
             ))
-
-        logger.debug(f"Reset complete. Total agents: {len(self.agents)}")
-        logger.debug(f"Distribution - Predators: {predator_count}, Prey: {prey_count}, Normal: {normal_count}")
 
         self.time_accumulated = 0
         self.stop_recording()
