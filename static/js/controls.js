@@ -69,6 +69,7 @@ class SwarmControls {
 
         // Parameter sliders
         const parameters = [
+            {id: 'agentCount', valueId: 'agentCountValue'},
             {id: 'agentSpeed', valueId: 'speedValue'},
             {id: 'swarmCohesion', valueId: 'cohesionValue'},
             {id: 'swarmAlignment', valueId: 'alignmentValue'},

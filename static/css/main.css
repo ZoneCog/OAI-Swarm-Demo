@@ -140,6 +140,13 @@ main {
     margin-bottom: 15px;
 }
 
+.recording-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
 .parameter {
     margin-bottom: 15px;
 }
@@ -174,6 +181,7 @@ input[type="range"]::-webkit-slider-thumb {
     margin: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
+    width: calc(100% - 10px);
 }
 
 .neon-btn:hover, .pattern-btn:hover {
@@ -186,6 +194,22 @@ input[type="range"]::-webkit-slider-thumb {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+}
+
+.behavior-editor {
+    margin-top: 30px;
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-content {
+    flex-grow: 1;
+    min-height: 300px;
+}
+
+.CodeMirror {
+    height: 100% !important;
 }
 
 @keyframes pulse {

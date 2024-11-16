@@ -57,6 +57,7 @@ class SwarmSimulation:
         self.agents: List[Agent] = []
         self.running = False
         self.parameters = {
+            'agentCount': 20,
             'agentSpeed': 5,
             'swarmCohesion': 5,
             'swarmAlignment': 5,
@@ -89,8 +90,12 @@ class SwarmSimulation:
     def reset(self):
         """Reset simulation with new agents"""
         self.agents = []
-        for i in range(20):
-            role = 'predator' if i < 2 else 'prey' if i < 5 else 'normal'
+        agent_count = int(self.parameters['agentCount'])
+        predator_count = max(2, int(agent_count * 0.1))  # 10% predators
+        prey_count = max(3, int(agent_count * 0.15))     # 15% prey
+        
+        for i in range(agent_count):
+            role = 'predator' if i < predator_count else 'prey' if i < (predator_count + prey_count) else 'normal'
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
                 y=random.uniform(100, 500),
@@ -210,6 +215,8 @@ class SwarmSimulation:
         """Update simulation parameter"""
         if name in self.parameters:
             self.parameters[name] = float(value)
+            if name == 'agentCount':
+                self.reset()  # Reset simulation when agent count changes
             print(f"Parameter {name} set to {value}")
 
     def set_pattern(self, pattern: str):
