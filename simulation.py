@@ -290,6 +290,8 @@ class SwarmSimulation:
             self._update_split_merge(speed, dt)
         elif self.current_pattern == 'wave':
             self._update_wave(speed, dt)
+        elif self.current_pattern == 'custom':
+            self._update_custom(speed, dt)
         elif self.current_pattern == 'flocking':
             self._update_flocking(speed, cohesion, alignment)
         elif self.current_pattern == 'circle':
@@ -412,11 +414,11 @@ class SwarmSimulation:
             base_x = (i * 40 + self.time_accumulated * speed * 50) % 800
             base_y = 300  # Center of screen
             
-            # Add sine wave offset
-            wave_offset = amplitude * math.sin(frequency * (base_x / 100 + self.time_accumulated))
-            target_y = base_y + wave_offset
+            # Add wave motion
+            wave_y = math.sin(2 * math.pi * frequency * (base_x / 800 + self.time_accumulated)) * amplitude
+            target_y = base_y + wave_y
             
-            # Calculate direction to target
+            # Move towards target position
             dx = base_x - agent.x
             dy = target_y - agent.y
             target_angle = math.atan2(dy, dx)
@@ -428,6 +430,87 @@ class SwarmSimulation:
             # Move agent
             agent.x += math.cos(agent.angle) * speed
             agent.y += math.sin(agent.angle) * speed
+
+    def _update_custom(self, speed: float, dt: float):
+        """Execute custom behavior pattern"""
+        if hasattr(self, 'custom_behavior') and self.custom_behavior:
+            try:
+                # Create a safe namespace for custom code execution
+                namespace = {
+                    'math': math,
+                    'random': random,
+                    'agents': self.agents,
+                    'dt': dt,
+                    'speed': speed,
+                    'parameters': self.parameters
+                }
+                
+                # Execute custom behavior
+                exec(self.custom_behavior, namespace)
+                
+                # Call the update_agents function from custom code
+                if 'update_agents' in namespace:
+                    updated_agents = namespace['update_agents'](
+                        self.agents, dt, speed, self.parameters
+                    )
+                    if isinstance(updated_agents, list):
+                        self.agents = updated_agents
+            except Exception as e:
+                print(f"Error in custom behavior: {str(e)}")
+
+    def validate_custom_behavior(self, code: str) -> tuple[bool, str]:
+        """Validate custom behavior code"""
+        try:
+            # Check for unsafe imports
+            if any(keyword in code for keyword in ['import', 'exec', 'eval', '__']):
+                return False, "Unsafe code detected"
+            
+            # Try to compile the code
+            compile(code, '<string>', 'exec')
+            
+            # Basic structure validation
+            if 'def update_agents' not in code:
+                return False, "Missing update_agents function"
+            
+            return True, "Behavior code validated successfully"
+        except Exception as e:
+            return False, f"Validation error: {str(e)}"
+
+    def set_custom_behavior(self, code: str) -> tuple[bool, str]:
+        """Set custom behavior code after validation"""
+        is_valid, message = self.validate_custom_behavior(code)
+        if is_valid:
+            self.custom_behavior = code
+        return is_valid, message
+
+    def _update(self, dt: float):
+        """Update agent positions and behaviors"""
+        base_speed = max(self.parameters['agentSpeed'], 2)
+        speed = base_speed * 4.0 * dt
+        cohesion = self.parameters['swarmCohesion'] * 0.02
+        alignment = self.parameters['swarmAlignment'] * 0.02
+
+        if self.current_pattern == 'predator_prey':
+            self._update_predator_prey(speed, dt)
+        elif self.current_pattern == 'vortex':
+            self._update_vortex(speed, dt)
+        elif self.current_pattern == 'split_merge':
+            self._update_split_merge(speed, dt)
+        elif self.current_pattern == 'wave':
+            self._update_wave(speed, dt)
+        elif self.current_pattern == 'custom':
+            self._update_custom(speed, dt)
+        elif self.current_pattern == 'flocking':
+            self._update_flocking(speed, cohesion, alignment)
+        elif self.current_pattern == 'circle':
+            self._update_circle(speed)
+        elif self.current_pattern == 'scatter':
+            self._update_scatter(speed)
+
+        # Apply position updates and wrapping
+        for agent in self.agents:
+            agent.x = agent.x % 800
+            agent.y = agent.y % 600
 
     def _update_flocking(self, speed: float, cohesion: float, alignment: float):
         """Original flocking behavior"""

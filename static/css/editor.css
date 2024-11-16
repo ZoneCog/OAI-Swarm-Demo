@@ -1,0 +1,62 @@
+.behavior-editor {
+    background: var(--panel-bg);
+    border: 1px solid var(--primary-neon);
+    border-radius: 4px;
+    margin-top: 20px;
+    padding: 15px;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.editor-header h3 {
+    color: var(--primary-neon);
+    margin: 0;
+}
+
+.editor-content {
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    border-radius: 4px;
+    height: 300px;
+    margin-bottom: 15px;
+}
+
+.editor-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#editorStatus {
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+#editorStatus.success {
+    background: rgba(0, 255, 0, 0.1);
+    color: #0f0;
+}
+
+#editorStatus.error {
+    background: rgba(255, 0, 0, 0.1);
+    color: #f00;
+}
+
+.CodeMirror {
+    height: 100%;
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.CodeMirror-gutters {
+    background: rgba(0, 0, 0, 0.4);
+    border-right: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.CodeMirror-linenumber {
+    color: rgba(0, 255, 255, 0.5);
+}

@@ -81,6 +81,24 @@ def websocket(ws):
             elif data['type'] == 'pattern':
                 simulation.set_pattern(data['name'])
                 
+            elif data['type'] == 'custom_behavior':
+                if data['action'] == 'save':
+                    success, message = simulation.set_custom_behavior(data['code'])
+                    if success:
+                        simulation.set_pattern('custom')
+                    ws.send(json.dumps({
+                        'type': 'behavior_response',
+                        'success': success,
+                        'message': message
+                    }))
+                elif data['action'] == 'test':
+                    success, message = simulation.validate_custom_behavior(data['code'])
+                    ws.send(json.dumps({
+                        'type': 'behavior_response',
+                        'success': success,
+                        'message': message
+                    }))
+                    
             elif data['type'] == 'get_recording':
                 recording = simulation.save_recording()
                 ws.send(json.dumps({
