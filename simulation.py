@@ -66,7 +66,7 @@ class SwarmSimulation:
         self.agents: List[Agent] = []
         self.running = False
         self.parameters = {
-            'agentCount': 20,
+            'agentCount': 50,  # Changed from 20 to 50
             'agentSpeed': 5,
             'swarmCohesion': 5,
             'swarmAlignment': 5,
@@ -118,6 +118,7 @@ class SwarmSimulation:
                 angle=random.uniform(0, 2 * math.pi),
                 role='predator'
             ))
+        logger.debug(f"Created {predator_count} predator agents")
             
         # Create prey
         for i in range(prey_count):
@@ -127,6 +128,7 @@ class SwarmSimulation:
                 angle=random.uniform(0, 2 * math.pi),
                 role='prey'
             ))
+        logger.debug(f"Created {prey_count} prey agents")
             
         # Create normal agents
         for i in range(normal_count):
@@ -136,21 +138,30 @@ class SwarmSimulation:
                 angle=random.uniform(0, 2 * math.pi),
                 role='normal'
             ))
+        logger.debug(f"Created {normal_count} normal agents")
+
+        # Verify final agent count
+        actual_count = len(self.agents)
+        if actual_count != agent_count:
+            logger.error(f"Agent count mismatch! Expected: {agent_count}, Actual: {actual_count}")
+        else:
+            logger.info(f"Successfully created {actual_count} total agents")
 
         self.time_accumulated = 0
         self.stop_recording()
         self.stop_playback()
         self.analytics.reset_metrics()
-        logger.info(f"Simulation reset complete with {len(self.agents)} agents")
 
     def _validate_agent_count(self, count: int) -> int:
         """Validate and adjust agent count to be within bounds"""
+        logger.debug(f"Validating agent count: {count}")
         if count < self.MIN_AGENTS:
             logger.warning(f"Agent count {count} below minimum, setting to {self.MIN_AGENTS}")
             return self.MIN_AGENTS
         elif count > self.MAX_AGENTS:
             logger.warning(f"Agent count {count} above maximum, setting to {self.MAX_AGENTS}")
             return self.MAX_AGENTS
+        logger.debug(f"Agent count {count} is valid")
         return count
 
     def set_parameter(self, name: str, value: float) -> bool:

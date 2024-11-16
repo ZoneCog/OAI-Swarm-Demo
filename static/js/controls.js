@@ -68,9 +68,17 @@ class SwarmControls {
             window.swarmWS.send({ type: 'command', action: 'stop_playback' });
         };
 
-        // Parameter sliders with enhanced validation and logging
+        // Enhanced parameter sliders with detailed logging
         const parameters = [
-            {id: 'agentCount', valueId: 'agentCountValue', min: 5, max: 50, step: 1, immediate: true},
+            {
+                id: 'agentCount',
+                valueId: 'agentCountValue',
+                min: 5,
+                max: 50,
+                step: 1,
+                immediate: true,
+                initialValue: 50  // Match simulation.py initial value
+            },
             {id: 'agentSpeed', valueId: 'speedValue', min: 1, max: 10, step: 0.5},
             {id: 'swarmCohesion', valueId: 'cohesionValue', min: 1, max: 10, step: 1},
             {id: 'swarmAlignment', valueId: 'alignmentValue', min: 1, max: 10, step: 1},
@@ -87,12 +95,19 @@ class SwarmControls {
                 slider.min = param.min;
                 slider.max = param.max;
                 slider.step = param.step;
+                
+                // Set initial value if specified
+                if (param.initialValue !== undefined) {
+                    slider.value = param.initialValue;
+                    valueDisplay.textContent = param.initialValue;
+                    console.log(`Initialized ${param.id} slider with value: ${param.initialValue}`);
+                }
 
                 // Update display and handle parameter changes
                 slider.oninput = () => {
                     try {
                         const value = parseFloat(slider.value);
-                        console.log(`Slider ${param.id} value changed to: ${value}`);
+                        console.log(`${param.id} slider value changed to: ${value}`);
 
                         // Validate value is within bounds
                         if (value < param.min || value > param.max) {
@@ -121,6 +136,13 @@ class SwarmControls {
                         console.error(`Error handling slider change for ${param.id}:`, error);
                     }
                 };
+
+                // Trigger initial value update for agent count
+                if (param.id === 'agentCount' && param.initialValue !== undefined) {
+                    this.sendParameterUpdate(param.id, param.initialValue);
+                }
+            } else {
+                console.error(`Could not find slider or value display elements for ${param.id}`);
             }
         });
 
