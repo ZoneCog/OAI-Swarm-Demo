@@ -42,7 +42,6 @@ class SwarmControls {
                 reader.onload = (e) => {
                     try {
                         this.currentRecording = JSON.parse(e.target.result);
-                        console.log('Recording loaded:', this.currentRecording.length, 'states');
                     } catch (error) {
                         console.error('Error parsing recording file:', error);
                     }
