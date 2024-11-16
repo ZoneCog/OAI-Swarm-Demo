@@ -5,7 +5,7 @@ import random
 import json
 import logging
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG,
@@ -20,28 +20,35 @@ class Agent:
     vx: float = 0
     vy: float = 0
     role: str = 'normal'  # Can be 'normal', 'predator', or 'prey'
+    state: str = 'normal'  # Added state field for tracking organization status
     
     def to_dict(self):
         return {
             'x': self.x,
             'y': self.y,
             'angle': self.angle,
-            'role': self.role
+            'role': self.role,
+            'state': self.state
         }
+
+    def distance_to(self, other: 'Agent') -> float:
+        dx = other.x - self.x
+        dy = other.y - self.y
+        return math.sqrt(dx * dx + dy * dy)
 
 class SwarmAnalytics:
     def __init__(self):
         self.reset_metrics()
 
     def reset_metrics(self):
-        self.avg_distance = 0
-        self.predator_prey_distances = []
-        self.role_counts = {'normal': 0, 'predator': 0, 'prey': 0}
-        self.pattern_durations = {}
-        self.pattern_switches = 0
-        self.cohesion_score = 0
-        self.alignment_score = 0
-        self.interaction_zones = {
+        self.avg_distance: float = 0.0
+        self.predator_prey_distances: List[float] = []
+        self.role_counts: Dict[str, int] = {'normal': 0, 'predator': 0, 'prey': 0}
+        self.pattern_durations: Dict[str, float] = {}
+        self.pattern_switches: int = 0
+        self.cohesion_score: float = 0.0
+        self.alignment_score: float = 0.0
+        self.interaction_zones: Dict[str, int] = {
             'close': 0,  # < 50 units
             'medium': 0, # 50-150 units
             'far': 0     # > 150 units
@@ -61,12 +68,15 @@ class SwarmAnalytics:
 class SwarmSimulation:
     MIN_AGENTS = 5
     MAX_AGENTS = 50
+    CONVERSION_RADIUS = 50.0  # Distance for converting normal agents to prey
+    ORGANIZATION_THRESHOLD = 0.4  # 40% of total agents needed for organization
+    FLEE_DISTANCE = 200.0  # Distance at which predators flee from organized prey
     
     def __init__(self):
         self.agents: List[Agent] = []
         self.running = False
         self.parameters = {
-            'agentCount': 50,  # Changed from 20 to 50
+            'agentCount': 50,
             'agentSpeed': 5,
             'swarmCohesion': 5,
             'swarmAlignment': 5,
@@ -74,13 +84,14 @@ class SwarmSimulation:
             'waveAmplitude': 50
         }
         self.current_pattern = 'flocking'
+        self.formation_center = {'x': 400.0, 'y': 300.0}
+        self._initialize_simulation()
+        
+    def _initialize_simulation(self):
+        """Initialize simulation components"""
         self.time_accumulated = 0
         self.last_pattern_change = time.time()
-        
-        # Analytics
         self.analytics = SwarmAnalytics()
-        
-        # Recording related attributes
         self.recording = False
         self.recorded_states = []
         self.playback_mode = False
@@ -95,6 +106,62 @@ class SwarmSimulation:
         self.thread.daemon = True
         self.thread.start()
         logger.info("Simulation thread started")
+
+    def _validate_agent_count(self, count: int) -> int:
+        """Validate and adjust agent count to be within bounds"""
+        logger.debug(f"Validating agent count request: {count}")
+        
+        if not isinstance(count, int):
+            count = int(count)
+            logger.warning(f"Agent count converted to integer: {count}")
+        
+        if count < self.MIN_AGENTS:
+            logger.warning(f"Agent count {count} below minimum ({self.MIN_AGENTS}), adjusting")
+            return self.MIN_AGENTS
+        elif count > self.MAX_AGENTS:
+            logger.warning(f"Agent count {count} above maximum ({self.MAX_AGENTS}), adjusting")
+            return self.MAX_AGENTS
+        
+        logger.debug(f"Agent count {count} validated successfully")
+        return count
+
+    def set_parameter(self, name: str, value: float) -> bool:
+        """Update simulation parameter with enhanced validation and logging"""
+        try:
+            if name not in self.parameters:
+                logger.warning(f"Attempted to set unknown parameter: {name}")
+                return False
+
+            old_value = self.parameters[name]
+            new_value = float(value)
+            
+            # Special handling for agent count
+            if name == 'agentCount':
+                new_value = self._validate_agent_count(int(new_value))
+                logger.info(f"Agent count parameter update: {old_value} -> {new_value}")
+                
+                if new_value != old_value:
+                    logger.info(f"Applying new agent count: {new_value}")
+                    self.parameters[name] = new_value
+                    self.reset()
+                    logger.info(f"Reset completed with new agent count: {len(self.agents)}")
+                return True
+            
+            # Validate other parameters
+            if new_value <= 0:
+                logger.warning(f"Invalid {name} value: {new_value} (must be positive)")
+                return False
+            
+            self.parameters[name] = new_value
+            logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
+            return True
+            
+        except ValueError as e:
+            logger.error(f"Error setting parameter {name}: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error setting parameter {name}: {str(e)}")
+            return False
 
     def reset(self):
         """Reset simulation with new agents"""
@@ -151,54 +218,6 @@ class SwarmSimulation:
         self.stop_recording()
         self.stop_playback()
         self.analytics.reset_metrics()
-
-    def _validate_agent_count(self, count: int) -> int:
-        """Validate and adjust agent count to be within bounds"""
-        logger.debug(f"Validating agent count: {count}")
-        if count < self.MIN_AGENTS:
-            logger.warning(f"Agent count {count} below minimum, setting to {self.MIN_AGENTS}")
-            return self.MIN_AGENTS
-        elif count > self.MAX_AGENTS:
-            logger.warning(f"Agent count {count} above maximum, setting to {self.MAX_AGENTS}")
-            return self.MAX_AGENTS
-        logger.debug(f"Agent count {count} is valid")
-        return count
-
-    def set_parameter(self, name: str, value: float) -> bool:
-        """Update simulation parameter with enhanced validation and logging"""
-        try:
-            if name not in self.parameters:
-                logger.warning(f"Attempted to set unknown parameter: {name}")
-                return False
-
-            old_value = self.parameters[name]
-            new_value = float(value)
-            
-            # Special handling for agent count
-            if name == 'agentCount':
-                new_value = self._validate_agent_count(int(new_value))
-                logger.info(f"Agent count update request: {old_value} -> {new_value}")
-                
-                if new_value != old_value:
-                    logger.info(f"Applying new agent count: {new_value}")
-                    self.parameters[name] = new_value
-                    self.reset()
-                    logger.info(f"Reset completed with new agent count: {len(self.agents)}")
-                else:
-                    logger.debug(f"Agent count unchanged: {new_value}")
-            else:
-                # Handle other parameters
-                self.parameters[name] = new_value
-                logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
-            
-            return True
-            
-        except ValueError as e:
-            logger.error(f"Error setting parameter {name}: {str(e)}")
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error setting parameter {name}: {str(e)}")
-            return False
 
     def start(self):
         """Start simulation"""
@@ -340,18 +359,21 @@ class SwarmSimulation:
             agent.y = agent.y % 600
 
     def _update_collective_action(self, speed: float, dt: float):
-        """Collective action behavior where prey organize to chase predators"""
-        # Count prey agents
+        """Enhanced collective action behavior where prey organize to chase predators"""
+        # Count prey agents and check organization threshold
         prey_agents = [agent for agent in self.agents if agent.role == 'prey']
         num_prey = len(prey_agents)
-        organize_threshold = len(self.agents) * 0.4  # 40% threshold for organizing
+        organize_threshold = int(len(self.agents) * self.ORGANIZATION_THRESHOLD)
+        
+        logger.debug(f"Collective action update - Prey count: {num_prey}, Threshold: {organize_threshold}")
 
-        # Initialize formation center if not exists
-        if not hasattr(self, '_formation_center'):
-            self._formation_center = {'x': 400, 'y': 300}
-
-        # If enough prey, organize and chase predators
-        if num_prey >= organize_threshold:
+        # Update organization state
+        is_organized = num_prey >= organize_threshold
+        for agent in prey_agents:
+            agent.state = 'organized' if is_organized else 'normal'
+            
+        if is_organized:
+            logger.debug("Prey agents are organized - forming collective")
             # Find center of predators
             predator_agents = [a for a in self.agents if a.role == 'predator']
             if predator_agents:
@@ -361,85 +383,82 @@ class SwarmSimulation:
                 target_x, target_y = 400, 300
 
             # Move formation center towards predators
-            dx = target_x - self._formation_center['x']
-            dy = target_y - self._formation_center['y']
+            dx = target_x - self.formation_center['x']
+            dy = target_y - self.formation_center['y']
             dist = math.sqrt(dx*dx + dy*dy)
+            
             if dist > 0:
-                self._formation_center['x'] = self._formation_center['x'] + (dx/dist) * speed * 0.5
-                self._formation_center['y'] = self._formation_center['y'] + (dy/dist) * speed * 0.5
+                self.formation_center['x'] += int((dx/dist) * speed * 0.5)
+                self.formation_center['y'] += int((dy/dist) * speed * 0.5)
 
             # Arrange prey in arrow formation
             formation_radius = 30 + num_prey * 2
             for idx, agent in enumerate(prey_agents):
                 angle = (2 * math.pi * idx) / num_prey
-                # Create arrow shape by adjusting radius based on angle
-                if abs(angle - math.pi) < math.pi/3:  # Front of arrow
-                    radius = formation_radius * 0.7
-                else:  # Wings of arrow
-                    radius = formation_radius
-            
-                desired_x = self._formation_center['x'] + radius * math.cos(angle)
-                desired_y = self._formation_center['y'] + radius * math.sin(angle)
-            
+                # Create arrow shape
+                if abs(angle - math.pi) < math.pi/3:
+                    radius = formation_radius * 0.7  # Front of arrow
+                else:
+                    radius = formation_radius  # Wings
+                
+                desired_x = self.formation_center['x'] + radius * math.cos(angle)
+                desired_y = self.formation_center['y'] + radius * math.sin(angle)
+                
                 dx = desired_x - agent.x
                 dy = desired_y - agent.y
                 target_angle = math.atan2(dy, dx)
-            
+                
                 # Smooth angle adjustment
                 angle_diff = (target_angle - agent.angle + math.pi) % (2 * math.pi) - math.pi
                 agent.angle += angle_diff * 0.1
-            
+                
                 # Move agent
                 agent.x += math.cos(agent.angle) * speed * 1.2
                 agent.y += math.sin(agent.angle) * speed * 1.2
 
             # Convert nearby normal agents to prey
+            conversions = 0
             for agent in prey_agents:
                 for other in self.agents:
                     if other.role == 'normal':
-                        dx = other.x - agent.x
-                        dy = other.y - agent.y
-                        dist = math.sqrt(dx*dx + dy*dy)
-                        if dist < 50:  # Conversion radius
+                        dist = agent.distance_to(other)
+                        if dist < self.CONVERSION_RADIUS:
                             other.role = 'prey'
+                            other.state = 'organized' if is_organized else 'normal'
+                            conversions += 1
+            
+            if conversions > 0:
+                logger.debug(f"Converted {conversions} normal agents to prey")
 
-        else:
-            # Standard prey behavior when not organized
-            for agent in prey_agents:
-                # Move randomly
-                agent.x += math.cos(agent.angle) * speed
-                agent.y += math.sin(agent.angle) * speed
-                agent.angle += random.uniform(-0.1, 0.1)
-
-        # Update predators - they now flee from organized prey
-        predator_agents = [a for a in self.agents if a.role == 'predator']
-        if num_prey >= organize_threshold:
-            for agent in predator_agents:
-                dx = agent.x - self._formation_center['x']
-                dy = agent.y - self._formation_center['y']
+            # Update predators - they now flee from organized prey
+            for agent in [a for a in self.agents if a.role == 'predator']:
+                dx = agent.x - self.formation_center['x']
+                dy = agent.y - self.formation_center['y']
                 dist = math.sqrt(dx*dx + dy*dy)
-                if dist < 200:  # Flee distance
+                
+                if dist < self.FLEE_DISTANCE:
                     flee_angle = math.atan2(dy, dx)
                     agent.angle = flee_angle
                     agent.x += math.cos(agent.angle) * speed * 1.5
                     agent.y += math.sin(agent.angle) * speed * 1.5
                 else:
+                    # Random movement when not fleeing
+                    agent.angle += random.uniform(-0.1, 0.1)
                     agent.x += math.cos(agent.angle) * speed
                     agent.y += math.sin(agent.angle) * speed
-                    agent.angle += random.uniform(-0.1, 0.1)
         else:
-            # Standard predator behavior
-            for agent in predator_agents:
+            logger.debug("Prey agents not organized - standard behavior")
+            # Standard behavior for unorganized prey
+            for agent in prey_agents:
+                agent.angle += random.uniform(-0.1, 0.1)
                 agent.x += math.cos(agent.angle) * speed
                 agent.y += math.sin(agent.angle) * speed
-                agent.angle += random.uniform(-0.1, 0.1)
 
-        # Update normal agents
-        for agent in self.agents:
-            if agent.role == 'normal':
-                agent.x += math.cos(agent.angle) * speed
-                agent.y += math.sin(agent.angle) * speed
+            # Normal predator behavior
+            for agent in [a for a in self.agents if a.role == 'predator']:
                 agent.angle += random.uniform(-0.1, 0.1)
+                agent.x += math.cos(agent.angle) * speed * 1.2
+                agent.y += math.sin(agent.angle) * speed * 1.2
 
     def _update_predator_prey(self, speed: float, dt: float):
         """Predator-prey behavior pattern"""
