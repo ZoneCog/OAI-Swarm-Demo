@@ -2,6 +2,7 @@ class SwarmWebSocket {
     constructor() {
         this.connect();
         this.onUpdateCallbacks = [];
+        this.onMessageCallbacks = [];
         this.lastUpdateTime = performance.now();
         this.updateCount = 0;
     }
@@ -52,6 +53,9 @@ class SwarmWebSocket {
                 
                 // Call all update callbacks
                 this.onUpdateCallbacks.forEach(callback => callback(data));
+            } else {
+                // Handle other message types
+                this.onMessageCallbacks.forEach(callback => callback(data));
             }
         };
     }
@@ -65,6 +69,10 @@ class SwarmWebSocket {
 
     onUpdate(callback) {
         this.onUpdateCallbacks.push(callback);
+    }
+
+    onMessage(callback) {
+        this.onMessageCallbacks.push(callback);
     }
 }
 

@@ -2,6 +2,7 @@ import math
 import time
 import threading
 import random
+import json
 from dataclasses import dataclass
 from typing import List, Dict
 
@@ -35,6 +36,14 @@ class SwarmSimulation:
         }
         self.current_pattern = 'flocking'
         self.time_accumulated = 0
+        
+        # Recording related attributes
+        self.recording = False
+        self.recorded_states = []
+        self.playback_mode = False
+        self.playback_index = 0
+        self.playback_states = []
+        
         self.reset()
         print("SwarmSimulation initialized with", len(self.agents), "agents")
         
@@ -56,6 +65,8 @@ class SwarmSimulation:
                 role=role
             ))
         self.time_accumulated = 0
+        self.stop_recording()
+        self.stop_playback()
         print("Simulation reset with", len(self.agents), "agents")
 
     def start(self):
@@ -67,6 +78,41 @@ class SwarmSimulation:
         """Stop simulation"""
         self.running = False
         print("Simulation stopped")
+
+    def start_recording(self):
+        """Start recording agent states"""
+        if not self.playback_mode:
+            self.recording = True
+            self.recorded_states = []
+            print("Recording started")
+
+    def stop_recording(self):
+        """Stop recording agent states"""
+        self.recording = False
+        print("Recording stopped")
+
+    def save_recording(self) -> List[Dict]:
+        """Return recorded states"""
+        return self.recorded_states
+
+    def load_recording(self, states: List[Dict]):
+        """Load recorded states for playback"""
+        self.playback_states = states
+        print(f"Loaded {len(states)} recorded states")
+
+    def start_playback(self):
+        """Start playback mode"""
+        if len(self.playback_states) > 0:
+            self.playback_mode = True
+            self.playback_index = 0
+            self.running = True
+            print("Playback started")
+
+    def stop_playback(self):
+        """Stop playback mode"""
+        self.playback_mode = False
+        self.playback_index = 0
+        print("Playback stopped")
 
     def set_parameter(self, name: str, value: float):
         """Update simulation parameter"""
@@ -95,8 +141,25 @@ class SwarmSimulation:
                 dt = current_time - last_update
                 last_update = current_time
                 
-                self.time_accumulated += dt
-                self._update(dt)
+                if self.playback_mode:
+                    if self.playback_index < len(self.playback_states):
+                        # Load agent states from recording
+                        state = self.playback_states[self.playback_index]
+                        self.agents = [
+                            Agent(x=a['x'], y=a['y'], angle=a['angle'], role=a['role'])
+                            for a in state
+                        ]
+                        self.playback_index += 1
+                    else:
+                        self.stop_playback()
+                        self.stop()
+                else:
+                    self.time_accumulated += dt
+                    self._update(dt)
+                    
+                    # Record state if recording is enabled
+                    if self.recording:
+                        self.recorded_states.append(self.get_agent_states())
                 
                 updates_count += 1
                 if updates_count % 100 == 0:

@@ -63,12 +63,29 @@ def websocket(ws):
                     simulation.stop()
                 elif data['action'] == 'reset':
                     simulation.reset()
+                elif data['action'] == 'start_recording':
+                    simulation.start_recording()
+                elif data['action'] == 'stop_recording':
+                    simulation.stop_recording()
+                elif data['action'] == 'start_playback':
+                    if 'recording' in data:
+                        simulation.load_recording(data['recording'])
+                    simulation.start_playback()
+                elif data['action'] == 'stop_playback':
+                    simulation.stop_playback()
                     
             elif data['type'] == 'parameter':
                 simulation.set_parameter(data['name'], data['value'])
                 
             elif data['type'] == 'pattern':
                 simulation.set_pattern(data['name'])
+                
+            elif data['type'] == 'get_recording':
+                recording = simulation.save_recording()
+                ws.send(json.dumps({
+                    'type': 'recording_data',
+                    'recording': recording
+                }))
                 
     except Exception as e:
         print(f"WebSocket error: {e}")
