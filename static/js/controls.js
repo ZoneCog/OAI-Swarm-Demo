@@ -1,7 +1,6 @@
 class SwarmControls {
     constructor() {
         this.currentRecording = null;
-        this.parameterUpdateTimeout = null;
         this.initializeControls();
     }
 
@@ -116,7 +115,6 @@ class SwarmControls {
     }
 
     sendParameterUpdate(name, value) {
-        console.log('Sending parameter update:', name, value);
         window.swarmWS.send({
             type: 'parameter',
             name: name,

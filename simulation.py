@@ -111,12 +111,9 @@ class SwarmSimulation:
             if name not in self.parameters:
                 return False
 
+            self.parameters[name] = float(value) if name != 'agentCount' else int(value)
             if name == 'agentCount':
-                self.parameters[name] = int(value)
                 self.reset()
-                return True
-            
-            self.parameters[name] = float(value)
             return True
             
         except (ValueError, TypeError) as e:
