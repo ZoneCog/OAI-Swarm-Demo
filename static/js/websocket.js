@@ -2,6 +2,8 @@ class SwarmWebSocket {
     constructor() {
         this.connect();
         this.onUpdateCallbacks = [];
+        this.lastUpdateTime = performance.now();
+        this.updateCount = 0;
     }
 
     connect() {
@@ -24,6 +26,21 @@ class SwarmWebSocket {
             const data = JSON.parse(event.data);
             
             if (data.type === 'state_update') {
+                const now = performance.now();
+                this.updateCount++;
+                
+                // Log update statistics every 100 updates
+                if (this.updateCount % 100 === 0) {
+                    const timeDiff = now - this.lastUpdateTime;
+                    const fps = 1000 / (timeDiff / 100);
+                    console.log(`Receiving updates at ${fps.toFixed(1)} FPS`);
+                    console.log(`Active agents: ${data.agents.length}`);
+                    if (data.agents.length > 0) {
+                        console.log(`Sample agent position:`, data.agents[0]);
+                    }
+                    this.lastUpdateTime = now;
+                }
+                
                 // Update agent count
                 document.getElementById('agentCount').textContent = 
                     data.agents.length;
@@ -41,6 +58,7 @@ class SwarmWebSocket {
 
     send(message) {
         if (this.ws.readyState === WebSocket.OPEN) {
+            console.log('Sending message:', message);
             this.ws.send(JSON.stringify(message));
         }
     }

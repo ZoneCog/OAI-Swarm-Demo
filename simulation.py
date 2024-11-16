@@ -31,11 +31,13 @@ class SwarmSimulation:
         }
         self.current_pattern = 'flocking'
         self.reset()
+        print("SwarmSimulation initialized with", len(self.agents), "agents")
         
         # Start simulation thread
         self.thread = threading.Thread(target=self._simulation_loop)
         self.thread.daemon = True
         self.thread.start()
+        print("Simulation thread started")
 
     def reset(self):
         """Reset simulation with new agents"""
@@ -46,23 +48,28 @@ class SwarmSimulation:
                 y=random.uniform(100, 500),
                 angle=random.uniform(0, 2 * math.pi)
             ))
+        print("Simulation reset with", len(self.agents), "agents")
 
     def start(self):
         """Start simulation"""
         self.running = True
+        print("Simulation started")
 
     def stop(self):
         """Stop simulation"""
         self.running = False
+        print("Simulation stopped")
 
     def set_parameter(self, name: str, value: float):
         """Update simulation parameter"""
         if name in self.parameters:
             self.parameters[name] = value
+            print(f"Parameter {name} set to {value}")
 
     def set_pattern(self, pattern: str):
         """Change swarm behavior pattern"""
         self.current_pattern = pattern
+        print(f"Pattern changed to {pattern}")
 
     def get_agent_states(self) -> List[Dict]:
         """Get current state of all agents"""
@@ -70,15 +77,32 @@ class SwarmSimulation:
 
     def _simulation_loop(self):
         """Main simulation loop"""
+        last_update = time.time()
+        updates_count = 0
+        print("Simulation loop started")
+        
         while True:
             if self.running:
-                self._update()
-            time.sleep(1/30)  # 30 FPS
+                current_time = time.time()
+                dt = current_time - last_update
+                last_update = current_time
+                
+                self._update(dt)
+                
+                updates_count += 1
+                if updates_count % 100 == 0:  # Log every 100 updates
+                    print(f"Simulation running: {updates_count} updates completed")
+                    # Log first agent position for debugging
+                    if self.agents:
+                        agent = self.agents[0]
+                        print(f"Sample agent position: x={agent.x:.2f}, y={agent.y:.2f}, angle={agent.angle:.2f}")
+                        
+            time.sleep(1/60)  # 60 FPS target
 
-    def _update(self):
+    def _update(self, dt: float):
         """Update agent positions and behaviors"""
         # Parameters
-        speed = self.parameters['agentSpeed'] * 0.5
+        speed = self.parameters['agentSpeed'] * 2.0 * dt  # Adjusted for deltaTime
         cohesion = self.parameters['swarmCohesion'] * 0.02
         alignment = self.parameters['swarmAlignment'] * 0.02
 
@@ -118,7 +142,7 @@ class SwarmSimulation:
                 # Random walk
                 agent.angle += random.uniform(-0.1, 0.1)
 
-            # Update position
+            # Update position with delta time
             agent.x += math.cos(agent.angle) * speed
             agent.y += math.sin(agent.angle) * speed
             
