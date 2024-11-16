@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarm Control Interface</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="sci-fi">
+    <div class="container">
+        <header>
+            <h1>SWARM CONTROL INTERFACE <span class="status-indicator">●</span></h1>
+        </header>
+
+        <main>
+            <div class="visualization-container">
+                <canvas id="swarmCanvas"></canvas>
+                <div class="overlay">
+                    <div class="stats">
+                        <div>Agents: <span id="agentCount">0</span></div>
+                        <div>FPS: <span id="fps">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="panel-section">
+                    <h2>Controls</h2>
+                    <button id="startBtn" class="neon-btn">Start</button>
+                    <button id="stopBtn" class="neon-btn">Stop</button>
+                    <button id="resetBtn" class="neon-btn">Reset</button>
+                </div>
+
+                <div class="panel-section">
+                    <h2>Parameters</h2>
+                    <div class="parameter">
+                        <label for="agentSpeed">Agent Speed</label>
+                        <input type="range" id="agentSpeed" min="1" max="10" value="5">
+                    </div>
+                    <div class="parameter">
+                        <label for="swarmCohesion">Swarm Cohesion</label>
+                        <input type="range" id="swarmCohesion" min="1" max="10" value="5">
+                    </div>
+                    <div class="parameter">
+                        <label for="swarmAlignment">Swarm Alignment</label>
+                        <input type="range" id="swarmAlignment" min="1" max="10" value="5">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h2>Behavior Patterns</h2>
+                    <button class="pattern-btn" data-pattern="flocking">Flocking</button>
+                    <button class="pattern-btn" data-pattern="circle">Circular</button>
+                    <button class="pattern-btn" data-pattern="scatter">Scatter</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/swarm.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/controls.js') }}"></script>
+</body>
+</html>
