@@ -20,9 +20,9 @@ class BehaviorEditor {
             </div>
         `;
 
-        // Add to control panel
-        const controlPanel = document.querySelector('.control-panel');
-        controlPanel.appendChild(editorContainer);
+        // Add after analytics panel
+        const analyticsPanel = document.querySelector('.analytics-panel');
+        analyticsPanel.parentNode.insertBefore(editorContainer, analyticsPanel.nextSibling);
 
         // Initialize CodeMirror editor
         this.editor = CodeMirror(document.getElementById('behaviorCode'), {
