@@ -68,6 +68,9 @@ class SwarmAnalytics:
 class SwarmSimulation:
     MIN_AGENTS = 5
     MAX_AGENTS = 50
+    ORGANIZATION_THRESHOLD = 0.4  # 40% of total agents needed for organization
+    CONVERSION_RADIUS = 50.0  # Distance for converting normal agents to prey
+    FLEE_DISTANCE = 200.0  # Distance at which predators flee from organized prey
     
     def __init__(self):
         self.agents: List[Agent] = []
@@ -81,6 +84,7 @@ class SwarmSimulation:
             'waveAmplitude': 50
         }
         self.current_pattern = 'flocking'
+        self.formation_center = {'x': 400.0, 'y': 300.0}
         self._initialize_simulation()
 
     def _initialize_simulation(self):
@@ -94,8 +98,9 @@ class SwarmSimulation:
         self.playback_index = 0
         self.playback_states = []
         
+        # Initialize with current parameters
         self.reset()
-        logger.info("SwarmSimulation initialized with %d agents", len(self.agents))
+        logger.info("SwarmSimulation initialized")
         
         # Start simulation thread
         self.thread = threading.Thread(target=self._simulation_loop)
@@ -104,19 +109,19 @@ class SwarmSimulation:
         logger.info("Simulation thread started")
 
     def _validate_agent_count(self, count: int) -> int:
-        """Simple validation to ensure count is between MIN_AGENTS and MAX_AGENTS"""
+        """Basic validation to ensure count is between MIN_AGENTS and MAX_AGENTS"""
         return max(min(int(count), self.MAX_AGENTS), self.MIN_AGENTS)
 
     def set_parameter(self, name: str, value: float) -> bool:
-        """Update simulation parameter with validation"""
+        """Update simulation parameter with basic validation"""
         try:
             if name not in self.parameters:
                 return False
 
             if name == 'agentCount':
-                logger.info(f"Received agent count update request: {value}")
+                logger.debug(f"Received agent count update: {value}")
                 count = self._validate_agent_count(int(value))
-                logger.info(f"Validated agent count: {count}")
+                logger.debug(f"Validated agent count: {count}")
                 self.parameters[name] = count
                 self.reset()
                 return True
@@ -129,16 +134,17 @@ class SwarmSimulation:
             return False
 
     def reset(self):
-        """Reset simulation with current parameter value"""
+        """Reset simulation with current parameters"""
         self.agents = []
         agent_count = self.parameters['agentCount']
-        logger.info(f"Resetting simulation with {agent_count} agents")
-        
-        predator_count = max(2, int(agent_count * 0.1))
-        prey_count = max(3, int(agent_count * 0.15))
+        logger.debug(f"Resetting simulation with {agent_count} agents")
+
+        # Simple role distribution
+        predator_count = max(1, int(agent_count * 0.1))
+        prey_count = max(1, int(agent_count * 0.2))
         normal_count = agent_count - (predator_count + prey_count)
         
-        # Create predators
+        # Create agents with roles
         for _ in range(predator_count):
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
@@ -147,7 +153,6 @@ class SwarmSimulation:
                 role='predator'
             ))
             
-        # Create prey
         for _ in range(prey_count):
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
@@ -156,7 +161,6 @@ class SwarmSimulation:
                 role='prey'
             ))
             
-        # Create normal agents
         for _ in range(normal_count):
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
@@ -165,11 +169,13 @@ class SwarmSimulation:
                 role='normal'
             ))
 
+        logger.debug(f"Reset complete. Total agents: {len(self.agents)}")
+        logger.debug(f"Distribution - Predators: {predator_count}, Prey: {prey_count}, Normal: {normal_count}")
+
         self.time_accumulated = 0
         self.stop_recording()
         self.stop_playback()
         self.analytics.reset_metrics()
-        logger.info(f"Reset complete. Total agents: {len(self.agents)}")
 
     def start(self):
         """Start simulation"""
