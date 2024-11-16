@@ -68,15 +68,12 @@ class SwarmAnalytics:
 class SwarmSimulation:
     MIN_AGENTS = 5
     MAX_AGENTS = 50
-    CONVERSION_RADIUS = 50.0  # Distance for converting normal agents to prey
-    ORGANIZATION_THRESHOLD = 0.4  # 40% of total agents needed for organization
-    FLEE_DISTANCE = 200.0  # Distance at which predators flee from organized prey
     
     def __init__(self):
         self.agents: List[Agent] = []
         self.running = False
         self.parameters = {
-            'agentCount': self.MIN_AGENTS,  # Initialize with minimum agents
+            'agentCount': self.MIN_AGENTS,
             'agentSpeed': 5,
             'swarmCohesion': 5,
             'swarmAlignment': 5,
@@ -84,9 +81,8 @@ class SwarmSimulation:
             'waveAmplitude': 50
         }
         self.current_pattern = 'flocking'
-        self.formation_center = {'x': 400.0, 'y': 300.0}
         self._initialize_simulation()
-        
+
     def _initialize_simulation(self):
         """Initialize simulation components"""
         self.time_accumulated = 0
@@ -108,30 +104,35 @@ class SwarmSimulation:
         logger.info("Simulation thread started")
 
     def _validate_agent_count(self, count: int) -> int:
-        """Simple agent count validation ensuring range is 5-50"""
+        """Simple validation to ensure count is between MIN_AGENTS and MAX_AGENTS"""
         return max(min(int(count), self.MAX_AGENTS), self.MIN_AGENTS)
 
     def set_parameter(self, name: str, value: float) -> bool:
-        """Update simulation parameter with simplified validation"""
+        """Update simulation parameter with validation"""
         try:
             if name not in self.parameters:
                 return False
 
             if name == 'agentCount':
-                self.parameters[name] = self._validate_agent_count(int(value))
+                logger.info(f"Received agent count update request: {value}")
+                count = self._validate_agent_count(int(value))
+                logger.info(f"Validated agent count: {count}")
+                self.parameters[name] = count
                 self.reset()
                 return True
             
             self.parameters[name] = float(value)
             return True
             
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error setting parameter {name}: {e}")
             return False
 
     def reset(self):
         """Reset simulation with current parameter value"""
         self.agents = []
         agent_count = self.parameters['agentCount']
+        logger.info(f"Resetting simulation with {agent_count} agents")
         
         predator_count = max(2, int(agent_count * 0.1))
         prey_count = max(3, int(agent_count * 0.15))
@@ -168,6 +169,7 @@ class SwarmSimulation:
         self.stop_recording()
         self.stop_playback()
         self.analytics.reset_metrics()
+        logger.info(f"Reset complete. Total agents: {len(self.agents)}")
 
     def start(self):
         """Start simulation"""

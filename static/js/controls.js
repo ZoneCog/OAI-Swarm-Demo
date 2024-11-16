@@ -66,7 +66,7 @@ class SwarmControls {
             window.swarmWS.send({ type: 'command', action: 'stop_playback' });
         };
 
-        // Parameter sliders with immediate updates
+        // Parameter sliders with direct updates
         const parameters = [
             {id: 'agentCount', valueId: 'agentCountValue', min: 5, max: 50, step: 1},
             {id: 'agentSpeed', valueId: 'speedValue', min: 1, max: 10, step: 0.5},
@@ -85,30 +85,14 @@ class SwarmControls {
                 slider.max = param.max;
                 slider.step = param.step;
                 
-                // Initialize slider with current simulation value
-                if (param.id === 'agentCount') {
-                    // The value will be updated by the WebSocket state updates
-                    window.swarmWS.onUpdate((data) => {
-                        if (data.agents) {
-                            const currentCount = data.agents.length;
-                            slider.value = currentCount;
-                            valueDisplay.textContent = currentCount;
-                            console.log('Updated agent count slider to:', currentCount);
-                        }
-                    });
-                }
-                
                 slider.oninput = () => {
                     const value = parseFloat(slider.value);
                     valueDisplay.textContent = value;
-                    console.log(`Parameter ${param.id} changed to:`, value);
                     
-                    // Immediate update for agent count
                     if (param.id === 'agentCount') {
-                        console.log('Sending immediate agent count update:', value);
+                        console.log('Agent count slider changed:', value);
                         this.sendParameterUpdate(param.id, value);
                     } else {
-                        // Debounce other parameter updates
                         if (this.parameterUpdateTimeout) {
                             clearTimeout(this.parameterUpdateTimeout);
                         }
