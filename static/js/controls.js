@@ -70,7 +70,7 @@ class SwarmControls {
 
         // Parameter sliders
         const parameters = [
-            {id: 'agentCount', valueId: 'agentCountValue', immediate: true},
+            {id: 'agentCount', valueId: 'agentCountValue', min: 5, max: 50},
             {id: 'agentSpeed', valueId: 'speedValue'},
             {id: 'swarmCohesion', valueId: 'cohesionValue'},
             {id: 'swarmAlignment', valueId: 'alignmentValue'},
@@ -83,20 +83,33 @@ class SwarmControls {
             const valueDisplay = document.getElementById(param.valueId);
             
             if (slider && valueDisplay) {
-                // Update display immediately when slider moves
+                // Set min and max for agent count
+                if (param.id === 'agentCount') {
+                    slider.min = param.min;
+                    slider.max = param.max;
+                }
+
+                // Update display and send parameter immediately for agent count
                 slider.oninput = () => {
-                    valueDisplay.textContent = slider.value;
-                    
-                    // For agent count, update immediately
-                    if (param.immediate) {
-                        this.sendParameterUpdate(param.id, parseFloat(slider.value));
+                    const value = parseFloat(slider.value);
+                    valueDisplay.textContent = value;
+                    console.log(`Slider ${param.id} value changed to:`, value);
+
+                    if (param.id === 'agentCount') {
+                        // Validate agent count range
+                        if (value >= param.min && value <= param.max) {
+                            console.log(`Sending immediate agent count update: ${value}`);
+                            this.sendParameterUpdate(param.id, value);
+                        } else {
+                            console.warn(`Invalid agent count value: ${value}. Must be between ${param.min} and ${param.max}`);
+                        }
                     } else {
-                        // For other parameters, use debounce
+                        // Debounce other parameter updates
                         if (this.parameterUpdateTimeout) {
                             clearTimeout(this.parameterUpdateTimeout);
                         }
                         this.parameterUpdateTimeout = setTimeout(() => {
-                            this.sendParameterUpdate(param.id, parseFloat(slider.value));
+                            this.sendParameterUpdate(param.id, value);
                         }, 100);
                     }
                 };
@@ -132,7 +145,7 @@ class SwarmControls {
                 name: name,
                 value: value
             };
-            console.log(`Updating parameter ${name} to ${value}`);
+            console.log(`Sending parameter update - ${name}: ${value}`);
             window.swarmWS.send(message);
         } catch (error) {
             console.error(`Error updating parameter ${name}:`, error);

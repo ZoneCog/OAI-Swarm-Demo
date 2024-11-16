@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from typing import List, Dict
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG,
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -58,6 +59,9 @@ class SwarmAnalytics:
         }
 
 class SwarmSimulation:
+    MIN_AGENTS = 5
+    MAX_AGENTS = 50
+    
     def __init__(self):
         self.agents: List[Agent] = []
         self.running = False
@@ -84,26 +88,27 @@ class SwarmSimulation:
         self.playback_states = []
         
         self.reset()
-        print("SwarmSimulation initialized with", len(self.agents), "agents")
+        logger.info("SwarmSimulation initialized with %d agents", len(self.agents))
         
         # Start simulation thread
         self.thread = threading.Thread(target=self._simulation_loop)
         self.thread.daemon = True
         self.thread.start()
-        print("Simulation thread started")
+        logger.info("Simulation thread started")
 
     def reset(self):
         """Reset simulation with new agents"""
         self.agents = []
-        agent_count = max(5, int(self.parameters['agentCount']))
+        agent_count = self._validate_agent_count(int(self.parameters['agentCount']))
+        
         predator_count = max(2, int(agent_count * 0.1))  # 10% predators
         prey_count = max(3, int(agent_count * 0.15))     # 15% prey
         normal_count = agent_count - (predator_count + prey_count)
         
-        logger.debug(f"Initializing simulation with {agent_count} agents:")
-        logger.debug(f"- Predators: {predator_count}")
-        logger.debug(f"- Prey: {prey_count}")
-        logger.debug(f"- Normal: {normal_count}")
+        logger.info(f"Resetting simulation with {agent_count} total agents:")
+        logger.info(f"- Predators: {predator_count}")
+        logger.info(f"- Prey: {prey_count}")
+        logger.info(f"- Normal: {normal_count}")
 
         # Create predators
         for i in range(predator_count):
@@ -138,63 +143,39 @@ class SwarmSimulation:
         self.analytics.reset_metrics()
         logger.info(f"Simulation reset complete with {len(self.agents)} agents")
 
-    def _update_analytics(self):
-        """Update analytics metrics"""
-        if len(self.agents) < 2:
-            return
+    def _validate_agent_count(self, count: int) -> int:
+        """Validate and adjust agent count to be within bounds"""
+        if count < self.MIN_AGENTS:
+            logger.warning(f"Agent count {count} below minimum, setting to {self.MIN_AGENTS}")
+            return self.MIN_AGENTS
+        elif count > self.MAX_AGENTS:
+            logger.warning(f"Agent count {count} above maximum, setting to {self.MAX_AGENTS}")
+            return self.MAX_AGENTS
+        return count
 
-        # Calculate average distance between all agents
-        total_distance = 0
-        distance_count = 0
-        self.analytics.predator_prey_distances = []
-        
-        # Reset interaction zones
-        self.analytics.interaction_zones = {'close': 0, 'medium': 0, 'far': 0}
-        
-        # Reset role counts
-        self.analytics.role_counts = {'normal': 0, 'predator': 0, 'prey': 0}
-        
-        # Calculate cohesion and alignment scores
-        center_x = sum(agent.x for agent in self.agents) / len(self.agents)
-        center_y = sum(agent.y for agent in self.agents) / len(self.agents)
-        avg_angle = sum(agent.angle for agent in self.agents) / len(self.agents)
-        
-        cohesion_total = 0
-        alignment_total = 0
-
-        for i, agent1 in enumerate(self.agents):
-            self.analytics.role_counts[agent1.role] += 1
-            
-            for j, agent2 in enumerate(self.agents[i+1:], i+1):
-                dx = agent1.x - agent2.x
-                dy = agent1.y - agent2.y
-                distance = math.sqrt(dx*dx + dy*dy)
+    def set_parameter(self, name: str, value: float):
+        """Update simulation parameter"""
+        try:
+            if name in self.parameters:
+                old_value = self.parameters[name]
+                new_value = float(value)
                 
-                # Update interaction zones
-                if distance < 50:
-                    self.analytics.interaction_zones['close'] += 1
-                elif distance < 150:
-                    self.analytics.interaction_zones['medium'] += 1
+                if name == 'agentCount':
+                    new_value = self._validate_agent_count(int(new_value))
+                    logger.info(f"Agent count parameter update: {old_value} -> {new_value}")
+                    if new_value != old_value:
+                        self.parameters[name] = new_value
+                        self.reset()
                 else:
-                    self.analytics.interaction_zones['far'] += 1
-                
-                total_distance += distance
-                distance_count += 1
-                
-                # Track predator-prey interactions
-                if (agent1.role == 'predator' and agent2.role == 'prey') or \
-                   (agent1.role == 'prey' and agent2.role == 'predator'):
-                    self.analytics.predator_prey_distances.append(distance)
-            
-            # Calculate individual agent's contribution to cohesion and alignment
-            agent_dist = math.sqrt((agent1.x - center_x)**2 + (agent1.y - center_y)**2)
-            cohesion_total += agent_dist
-            angle_diff = abs(math.sin(agent1.angle - avg_angle))
-            alignment_total += angle_diff
-
-        self.analytics.avg_distance = total_distance / max(1, distance_count)
-        self.analytics.cohesion_score = 100 * (1 - cohesion_total / (len(self.agents) * 400))  # 400 is max expected distance
-        self.analytics.alignment_score = 100 * (1 - alignment_total / len(self.agents))
+                    self.parameters[name] = new_value
+                    logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
+                return True
+            else:
+                logger.warning(f"Attempted to set unknown parameter: {name}")
+                return False
+        except ValueError as e:
+            logger.error(f"Error setting parameter {name}: {str(e)}")
+            return False
 
     def start(self):
         """Start simulation"""
@@ -247,12 +228,16 @@ class SwarmSimulation:
             if name in self.parameters:
                 old_value = self.parameters[name]
                 new_value = float(value)
-                self.parameters[name] = new_value
-                logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
                 
                 if name == 'agentCount':
-                    logger.info(f"Agent count changed to {new_value}, resetting simulation")
-                    self.reset()  # Reset simulation when agent count changes
+                    new_value = self._validate_agent_count(int(new_value))
+                    logger.info(f"Agent count parameter update: {old_value} -> {new_value}")
+                    if new_value != old_value:
+                        self.parameters[name] = new_value
+                        self.reset()
+                else:
+                    self.parameters[name] = new_value
+                    logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
                 return True
             else:
                 logger.warning(f"Attempted to set unknown parameter: {name}")
@@ -680,3 +665,61 @@ class SwarmSimulation:
             agent.angle += random.uniform(-0.1, 0.1)
             agent.x += math.cos(agent.angle) * speed
             agent.y += math.sin(agent.angle) * speed
+
+    def _update_analytics(self):
+        """Update analytics metrics"""
+        if len(self.agents) < 2:
+            return
+
+        # Calculate average distance between all agents
+        total_distance = 0
+        distance_count = 0
+        self.analytics.predator_prey_distances = []
+        
+        # Reset interaction zones
+        self.analytics.interaction_zones = {'close': 0, 'medium': 0, 'far': 0}
+        
+        # Reset role counts
+        self.analytics.role_counts = {'normal': 0, 'predator': 0, 'prey': 0}
+        
+        # Calculate cohesion and alignment scores
+        center_x = sum(agent.x for agent in self.agents) / len(self.agents)
+        center_y = sum(agent.y for agent in self.agents) / len(self.agents)
+        avg_angle = sum(agent.angle for agent in self.agents) / len(self.agents)
+        
+        cohesion_total = 0
+        alignment_total = 0
+
+        for i, agent1 in enumerate(self.agents):
+            self.analytics.role_counts[agent1.role] += 1
+            
+            for j, agent2 in enumerate(self.agents[i+1:], i+1):
+                dx = agent1.x - agent2.x
+                dy = agent1.y - agent2.y
+                distance = math.sqrt(dx*dx + dy*dy)
+                
+                # Update interaction zones
+                if distance < 50:
+                    self.analytics.interaction_zones['close'] += 1
+                elif distance < 150:
+                    self.analytics.interaction_zones['medium'] += 1
+                else:
+                    self.analytics.interaction_zones['far'] += 1
+                
+                total_distance += distance
+                distance_count += 1
+                
+                # Track predator-prey interactions
+                if (agent1.role == 'predator' and agent2.role == 'prey') or \
+                   (agent1.role == 'prey' and agent2.role == 'predator'):
+                    self.analytics.predator_prey_distances.append(distance)
+            
+            # Calculate individual agent's contribution to cohesion and alignment
+            agent_dist = math.sqrt((agent1.x - center_x)**2 + (agent1.y - center_y)**2)
+            cohesion_total += agent_dist
+            angle_diff = abs(math.sin(agent1.angle - avg_angle))
+            alignment_total += angle_diff
+
+        self.analytics.avg_distance = total_distance / max(1, distance_count)
+        self.analytics.cohesion_score = 100 * (1 - cohesion_total / (len(self.agents) * 400))  # 400 is max expected distance
+        self.analytics.alignment_score = 100 * (1 - alignment_total / len(self.agents))
