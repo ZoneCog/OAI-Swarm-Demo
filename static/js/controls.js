@@ -68,7 +68,7 @@ class SwarmControls {
 
         // Parameter sliders with direct updates
         const parameters = [
-            {id: 'agentCount', valueId: 'agentCountValue', min: 5, max: 50, step: 1},
+            {id: 'agentCount', valueId: 'agentCountValue', min: 1, max: 200, step: 1},
             {id: 'agentSpeed', valueId: 'speedValue', min: 1, max: 10, step: 0.5},
             {id: 'swarmCohesion', valueId: 'cohesionValue', min: 1, max: 10, step: 1},
             {id: 'swarmAlignment', valueId: 'alignmentValue', min: 1, max: 10, step: 1},

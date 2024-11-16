@@ -66,8 +66,6 @@ class SwarmAnalytics:
         }
 
 class SwarmSimulation:
-    MIN_AGENTS = 5
-    MAX_AGENTS = 50
     ORGANIZATION_THRESHOLD = 0.4  # 40% of total agents needed for organization
     CONVERSION_RADIUS = 50.0  # Distance for converting normal agents to prey
     FLEE_DISTANCE = 200.0  # Distance at which predators flee from organized prey
@@ -76,7 +74,7 @@ class SwarmSimulation:
         self.agents: List[Agent] = []
         self.running = False
         self.parameters = {
-            'agentCount': self.MIN_AGENTS,
+            'agentCount': 20,  # Default starting value
             'agentSpeed': 5,
             'swarmCohesion': 5,
             'swarmAlignment': 5,
@@ -98,7 +96,6 @@ class SwarmSimulation:
         self.playback_index = 0
         self.playback_states = []
         
-        # Initialize with current parameters
         self.reset()
         logger.info("SwarmSimulation initialized")
         
@@ -108,21 +105,16 @@ class SwarmSimulation:
         self.thread.start()
         logger.info("Simulation thread started")
 
-    def _validate_agent_count(self, count: int) -> int:
-        """Basic validation to ensure count is between MIN_AGENTS and MAX_AGENTS"""
-        return max(min(int(count), self.MAX_AGENTS), self.MIN_AGENTS)
-
     def set_parameter(self, name: str, value: float) -> bool:
-        """Update simulation parameter with basic validation"""
+        """Update simulation parameter with basic type conversion"""
         try:
             if name not in self.parameters:
                 return False
 
             if name == 'agentCount':
                 logger.debug(f"Received agent count update: {value}")
-                count = self._validate_agent_count(int(value))
-                logger.debug(f"Validated agent count: {count}")
-                self.parameters[name] = count
+                self.parameters[name] = int(value)
+                logger.debug(f"Setting agent count to: {self.parameters[name]}")
                 self.reset()
                 return True
             
@@ -139,9 +131,9 @@ class SwarmSimulation:
         agent_count = self.parameters['agentCount']
         logger.debug(f"Resetting simulation with {agent_count} agents")
 
-        # Simple role distribution
-        predator_count = max(1, int(agent_count * 0.1))
-        prey_count = max(1, int(agent_count * 0.2))
+        # Simple role distribution with percentages
+        predator_count = int(agent_count * 0.1)
+        prey_count = int(agent_count * 0.2)
         normal_count = agent_count - (predator_count + prey_count)
         
         # Create agents with roles
