@@ -76,7 +76,7 @@ class SwarmSimulation:
         self.agents: List[Agent] = []
         self.running = False
         self.parameters = {
-            'agentCount': 50,
+            'agentCount': self.MIN_AGENTS,  # Initialize with minimum agents
             'agentSpeed': 5,
             'swarmCohesion': 5,
             'swarmAlignment': 5,
@@ -108,9 +108,8 @@ class SwarmSimulation:
         logger.info("Simulation thread started")
 
     def _validate_agent_count(self, count: int) -> int:
-        """Simple agent count validation"""
-        count = int(count)
-        return max(min(count, self.MAX_AGENTS), self.MIN_AGENTS)
+        """Simple agent count validation ensuring range is 5-50"""
+        return max(min(int(count), self.MAX_AGENTS), self.MIN_AGENTS)
 
     def set_parameter(self, name: str, value: float) -> bool:
         """Update simulation parameter with simplified validation"""
@@ -130,9 +129,9 @@ class SwarmSimulation:
             return False
 
     def reset(self):
-        """Reset simulation with new agents"""
+        """Reset simulation with current parameter value"""
         self.agents = []
-        agent_count = self._validate_agent_count(int(self.parameters['agentCount']))
+        agent_count = self.parameters['agentCount']
         
         predator_count = max(2, int(agent_count * 0.1))
         prey_count = max(3, int(agent_count * 0.15))

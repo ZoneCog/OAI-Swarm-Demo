@@ -43,6 +43,7 @@ class SwarmControls {
                 reader.onload = (e) => {
                     try {
                         this.currentRecording = JSON.parse(e.target.result);
+                        console.log('Recording loaded:', this.currentRecording.length, 'states');
                     } catch (error) {
                         console.error('Error parsing recording file:', error);
                     }
@@ -65,7 +66,7 @@ class SwarmControls {
             window.swarmWS.send({ type: 'command', action: 'stop_playback' });
         };
 
-        // Simplified parameter sliders
+        // Parameter sliders with immediate updates
         const parameters = [
             {id: 'agentCount', valueId: 'agentCountValue', min: 5, max: 50, step: 1},
             {id: 'agentSpeed', valueId: 'speedValue', min: 1, max: 10, step: 0.5},
@@ -84,10 +85,37 @@ class SwarmControls {
                 slider.max = param.max;
                 slider.step = param.step;
                 
+                // Initialize slider with current simulation value
+                if (param.id === 'agentCount') {
+                    // The value will be updated by the WebSocket state updates
+                    window.swarmWS.onUpdate((data) => {
+                        if (data.agents) {
+                            const currentCount = data.agents.length;
+                            slider.value = currentCount;
+                            valueDisplay.textContent = currentCount;
+                            console.log('Updated agent count slider to:', currentCount);
+                        }
+                    });
+                }
+                
                 slider.oninput = () => {
                     const value = parseFloat(slider.value);
                     valueDisplay.textContent = value;
-                    this.sendParameterUpdate(param.id, value);
+                    console.log(`Parameter ${param.id} changed to:`, value);
+                    
+                    // Immediate update for agent count
+                    if (param.id === 'agentCount') {
+                        console.log('Sending immediate agent count update:', value);
+                        this.sendParameterUpdate(param.id, value);
+                    } else {
+                        // Debounce other parameter updates
+                        if (this.parameterUpdateTimeout) {
+                            clearTimeout(this.parameterUpdateTimeout);
+                        }
+                        this.parameterUpdateTimeout = setTimeout(() => {
+                            this.sendParameterUpdate(param.id, value);
+                        }, 100);
+                    }
                 };
             }
         });
@@ -115,6 +143,7 @@ class SwarmControls {
     }
 
     sendParameterUpdate(name, value) {
+        console.log('Sending parameter update:', name, value);
         window.swarmWS.send({
             type: 'parameter',
             name: name,
