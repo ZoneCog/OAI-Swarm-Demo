@@ -77,7 +77,7 @@ class SwarmControls {
                 max: 50,
                 step: 1,
                 immediate: true,
-                initialValue: 50  // Match simulation.py initial value
+                initialValue: 50
             },
             {id: 'agentSpeed', valueId: 'speedValue', min: 1, max: 10, step: 0.5},
             {id: 'swarmCohesion', valueId: 'cohesionValue', min: 1, max: 10, step: 1},
@@ -95,35 +95,43 @@ class SwarmControls {
                 slider.min = param.min;
                 slider.max = param.max;
                 slider.step = param.step;
+                slider.value = param.initialValue || slider.value;
                 
-                // Set initial value if specified
+                // Set initial value
                 if (param.initialValue !== undefined) {
-                    slider.value = param.initialValue;
                     valueDisplay.textContent = param.initialValue;
                     console.log(`Initialized ${param.id} slider with value: ${param.initialValue}`);
+                    
+                    // Send initial parameter update for agent count
+                    if (param.id === 'agentCount') {
+                        console.log(`Sending initial agent count update: ${param.initialValue}`);
+                        this.sendParameterUpdate(param.id, param.initialValue);
+                    }
                 }
 
-                // Update display and handle parameter changes
+                // Update display and handle parameter changes with enhanced logging
                 slider.oninput = () => {
                     try {
                         const value = parseFloat(slider.value);
                         console.log(`${param.id} slider value changed to: ${value}`);
 
-                        // Validate value is within bounds
-                        if (value < param.min || value > param.max) {
-                            console.error(`Invalid ${param.id} value: ${value}. Must be between ${param.min} and ${param.max}`);
-                            return;
+                        // Additional validation for agent count
+                        if (param.id === 'agentCount') {
+                            if (value < param.min || value > param.max) {
+                                console.error(`Invalid agent count: ${value}. Must be between ${param.min} and ${param.max}`);
+                                return;
+                            }
+                            console.log(`Validating agent count: ${value} (range: ${param.min}-${param.max})`);
                         }
 
                         // Update display
                         valueDisplay.textContent = value;
 
-                        // Send parameter update
-                        if (param.immediate) {
+                        // Handle parameter updates with proper logging
+                        if (param.immediate || param.id === 'agentCount') {
                             console.log(`Sending immediate parameter update for ${param.id}: ${value}`);
                             this.sendParameterUpdate(param.id, value);
                         } else {
-                            // Debounce other parameter updates
                             if (this.parameterUpdateTimeout) {
                                 clearTimeout(this.parameterUpdateTimeout);
                             }
@@ -136,11 +144,6 @@ class SwarmControls {
                         console.error(`Error handling slider change for ${param.id}:`, error);
                     }
                 };
-
-                // Trigger initial value update for agent count
-                if (param.id === 'agentCount' && param.initialValue !== undefined) {
-                    this.sendParameterUpdate(param.id, param.initialValue);
-                }
             } else {
                 console.error(`Could not find slider or value display elements for ${param.id}`);
             }
@@ -175,7 +178,7 @@ class SwarmControls {
                 name: name,
                 value: value
             };
-            console.log(`Sending parameter update - ${name}: ${value}`);
+            console.log(`Sending parameter update message:`, message);
             window.swarmWS.send(message);
         } catch (error) {
             console.error(`Error sending parameter update for ${name}:`, error);
