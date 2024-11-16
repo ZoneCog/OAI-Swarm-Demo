@@ -45,13 +45,27 @@
                         <label for="swarmAlignment">Swarm Alignment: <span id="alignmentValue">5</span></label>
                         <input type="range" id="swarmAlignment" min="1" max="10" value="5">
                     </div>
+                    <div class="parameter">
+                        <label for="waveFrequency">Wave Frequency: <span id="waveFrequencyValue">0.5</span></label>
+                        <input type="range" id="waveFrequency" min="0.1" max="2" value="0.5" step="0.1">
+                    </div>
+                    <div class="parameter">
+                        <label for="waveAmplitude">Wave Amplitude: <span id="waveAmplitudeValue">50</span></label>
+                        <input type="range" id="waveAmplitude" min="10" max="100" value="50" step="5">
+                    </div>
                 </div>
 
                 <div class="panel-section">
                     <h2>Behavior Patterns</h2>
-                    <button class="pattern-btn" data-pattern="flocking">Flocking</button>
-                    <button class="pattern-btn" data-pattern="circle">Circular</button>
-                    <button class="pattern-btn" data-pattern="scatter">Scatter</button>
+                    <div class="pattern-grid">
+                        <button class="pattern-btn" data-pattern="flocking">Flocking</button>
+                        <button class="pattern-btn" data-pattern="circle">Circular</button>
+                        <button class="pattern-btn" data-pattern="scatter">Scatter</button>
+                        <button class="pattern-btn" data-pattern="predator_prey">Predator-Prey</button>
+                        <button class="pattern-btn" data-pattern="vortex">Vortex</button>
+                        <button class="pattern-btn" data-pattern="split_merge">Split-Merge</button>
+                        <button class="pattern-btn" data-pattern="wave">Wave</button>
+                    </div>
                 </div>
             </div>
         </main>

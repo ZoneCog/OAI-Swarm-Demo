@@ -5,6 +5,8 @@
     --panel-bg: rgba(16, 16, 24, 0.9);
     --text-color: #fff;
     --grid-color: rgba(0, 255, 255, 0.1);
+    --predator-color: #ff3333;
+    --prey-color: #33ff33;
 }
 
 * {
@@ -136,6 +138,12 @@ input[type="range"]::-webkit-slider-thumb {
     box-shadow: 0 0 10px var(--primary-neon);
 }
 
+.pattern-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
 @keyframes pulse {
     0% { opacity: 0.5; }
     50% { opacity: 1; }
@@ -149,5 +157,9 @@ input[type="range"]::-webkit-slider-thumb {
     
     #swarmCanvas {
         height: 400px;
+    }
+    
+    .pattern-grid {
+        grid-template-columns: 1fr;
     }
 }

@@ -21,31 +21,41 @@ class SwarmControls {
         const parameters = [
             {id: 'agentSpeed', valueId: 'speedValue'},
             {id: 'swarmCohesion', valueId: 'cohesionValue'},
-            {id: 'swarmAlignment', valueId: 'alignmentValue'}
+            {id: 'swarmAlignment', valueId: 'alignmentValue'},
+            {id: 'waveFrequency', valueId: 'waveFrequencyValue'},
+            {id: 'waveAmplitude', valueId: 'waveAmplitudeValue'}
         ];
         
         parameters.forEach(param => {
             const slider = document.getElementById(param.id);
             const valueDisplay = document.getElementById(param.valueId);
             
-            // Update value display on input
-            slider.oninput = () => {
-                valueDisplay.textContent = slider.value;
-            };
-            
-            // Send value to server on change
-            slider.onchange = () => {
-                window.swarmWS.send({
-                    type: 'parameter',
-                    name: param.id,
-                    value: parseFloat(slider.value)
-                });
-            };
+            if (slider && valueDisplay) {
+                // Update value display on input
+                slider.oninput = () => {
+                    valueDisplay.textContent = slider.value;
+                };
+                
+                // Send value to server on change
+                slider.onchange = () => {
+                    window.swarmWS.send({
+                        type: 'parameter',
+                        name: param.id,
+                        value: parseFloat(slider.value)
+                    });
+                };
+            }
         });
 
         // Behavior pattern buttons
         document.querySelectorAll('.pattern-btn').forEach(btn => {
             btn.onclick = () => {
+                // Remove active class from all buttons
+                document.querySelectorAll('.pattern-btn').forEach(b => 
+                    b.classList.remove('active'));
+                // Add active class to clicked button
+                btn.classList.add('active');
+                
                 window.swarmWS.send({
                     type: 'pattern',
                     name: btn.dataset.pattern
