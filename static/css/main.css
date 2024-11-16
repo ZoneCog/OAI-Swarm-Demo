@@ -54,6 +54,12 @@ main {
     margin-top: 20px;
 }
 
+.visualization-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
 .visualization-container {
     position: relative;
     background: var(--panel-bg);
@@ -77,6 +83,44 @@ main {
     padding: 10px;
     border: 1px solid var(--primary-neon);
     border-radius: 4px;
+}
+
+.analytics-panel {
+    background: var(--panel-bg);
+    padding: 20px;
+    border: 1px solid var(--primary-neon);
+    border-radius: 4px;
+}
+
+.analytics-panel h2 {
+    color: var(--primary-neon);
+    font-size: 18px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.analytics-card {
+    background: rgba(0, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.analytics-card h3 {
+    color: var(--primary-neon);
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.role-counts {
+    display: grid;
+    gap: 5px;
 }
 
 .control-panel {
@@ -160,6 +204,10 @@ input[type="range"]::-webkit-slider-thumb {
     }
     
     .pattern-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .analytics-grid {
         grid-template-columns: 1fr;
     }
 }

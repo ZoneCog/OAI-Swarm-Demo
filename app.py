@@ -18,7 +18,8 @@ def broadcast_state():
         if connected_clients:
             state = {
                 'type': 'state_update',
-                'agents': simulation.get_agent_states()
+                'agents': simulation.get_agent_states(),
+                'analytics': simulation.get_analytics()
             }
             message = json.dumps(state)
             

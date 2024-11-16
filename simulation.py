@@ -23,6 +23,35 @@ class Agent:
             'role': self.role
         }
 
+class SwarmAnalytics:
+    def __init__(self):
+        self.reset_metrics()
+
+    def reset_metrics(self):
+        self.avg_distance = 0
+        self.predator_prey_distances = []
+        self.role_counts = {'normal': 0, 'predator': 0, 'prey': 0}
+        self.pattern_durations = {}
+        self.pattern_switches = 0
+        self.cohesion_score = 0
+        self.alignment_score = 0
+        self.interaction_zones = {
+            'close': 0,  # < 50 units
+            'medium': 0, # 50-150 units
+            'far': 0     # > 150 units
+        }
+
+    def to_dict(self):
+        return {
+            'avg_distance': round(self.avg_distance, 2),
+            'predator_prey_distances': [round(d, 2) for d in self.predator_prey_distances[-5:]],
+            'role_counts': self.role_counts,
+            'pattern_switches': self.pattern_switches,
+            'cohesion_score': round(self.cohesion_score, 2),
+            'alignment_score': round(self.alignment_score, 2),
+            'interaction_zones': self.interaction_zones
+        }
+
 class SwarmSimulation:
     def __init__(self):
         self.agents: List[Agent] = []
@@ -36,6 +65,10 @@ class SwarmSimulation:
         }
         self.current_pattern = 'flocking'
         self.time_accumulated = 0
+        self.last_pattern_change = time.time()
+        
+        # Analytics
+        self.analytics = SwarmAnalytics()
         
         # Recording related attributes
         self.recording = False
@@ -67,7 +100,66 @@ class SwarmSimulation:
         self.time_accumulated = 0
         self.stop_recording()
         self.stop_playback()
+        self.analytics.reset_metrics()
         print("Simulation reset with", len(self.agents), "agents")
+
+    def _update_analytics(self):
+        """Update analytics metrics"""
+        if len(self.agents) < 2:
+            return
+
+        # Calculate average distance between all agents
+        total_distance = 0
+        distance_count = 0
+        self.analytics.predator_prey_distances = []
+        
+        # Reset interaction zones
+        self.analytics.interaction_zones = {'close': 0, 'medium': 0, 'far': 0}
+        
+        # Reset role counts
+        self.analytics.role_counts = {'normal': 0, 'predator': 0, 'prey': 0}
+        
+        # Calculate cohesion and alignment scores
+        center_x = sum(agent.x for agent in self.agents) / len(self.agents)
+        center_y = sum(agent.y for agent in self.agents) / len(self.agents)
+        avg_angle = sum(agent.angle for agent in self.agents) / len(self.agents)
+        
+        cohesion_total = 0
+        alignment_total = 0
+
+        for i, agent1 in enumerate(self.agents):
+            self.analytics.role_counts[agent1.role] += 1
+            
+            for j, agent2 in enumerate(self.agents[i+1:], i+1):
+                dx = agent1.x - agent2.x
+                dy = agent1.y - agent2.y
+                distance = math.sqrt(dx*dx + dy*dy)
+                
+                # Update interaction zones
+                if distance < 50:
+                    self.analytics.interaction_zones['close'] += 1
+                elif distance < 150:
+                    self.analytics.interaction_zones['medium'] += 1
+                else:
+                    self.analytics.interaction_zones['far'] += 1
+                
+                total_distance += distance
+                distance_count += 1
+                
+                # Track predator-prey interactions
+                if (agent1.role == 'predator' and agent2.role == 'prey') or \
+                   (agent1.role == 'prey' and agent2.role == 'predator'):
+                    self.analytics.predator_prey_distances.append(distance)
+            
+            # Calculate individual agent's contribution to cohesion and alignment
+            agent_dist = math.sqrt((agent1.x - center_x)**2 + (agent1.y - center_y)**2)
+            cohesion_total += agent_dist
+            angle_diff = abs(math.sin(agent1.angle - avg_angle))
+            alignment_total += angle_diff
+
+        self.analytics.avg_distance = total_distance / max(1, distance_count)
+        self.analytics.cohesion_score = 100 * (1 - cohesion_total / (len(self.agents) * 400))  # 400 is max expected distance
+        self.analytics.alignment_score = 100 * (1 - alignment_total / len(self.agents))
 
     def start(self):
         """Start simulation"""
@@ -122,8 +214,20 @@ class SwarmSimulation:
 
     def set_pattern(self, pattern: str):
         """Change swarm behavior pattern"""
+        if pattern != self.current_pattern:
+            self.analytics.pattern_switches += 1
+            current_time = time.time()
+            duration = current_time - self.last_pattern_change
+            self.analytics.pattern_durations[self.current_pattern] = \
+                self.analytics.pattern_durations.get(self.current_pattern, 0) + duration
+            self.last_pattern_change = current_time
+            
         self.current_pattern = pattern
         print(f"Pattern changed to {pattern}")
+
+    def get_analytics(self) -> Dict:
+        """Get current analytics data"""
+        return self.analytics.to_dict()
 
     def get_agent_states(self) -> List[Dict]:
         """Get current state of all agents"""
@@ -156,6 +260,7 @@ class SwarmSimulation:
                 else:
                     self.time_accumulated += dt
                     self._update(dt)
+                    self._update_analytics()
                     
                     # Record state if recording is enabled
                     if self.recording:

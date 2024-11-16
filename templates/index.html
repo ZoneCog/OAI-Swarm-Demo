@@ -13,12 +13,44 @@
         </header>
 
         <main>
-            <div class="visualization-container">
-                <canvas id="swarmCanvas"></canvas>
-                <div class="overlay">
-                    <div class="stats">
-                        <div>Agents: <span id="agentCount">0</span></div>
-                        <div>FPS: <span id="fps">0</span></div>
+            <div class="visualization-section">
+                <div class="visualization-container">
+                    <canvas id="swarmCanvas"></canvas>
+                    <div class="overlay">
+                        <div class="stats">
+                            <div>Agents: <span id="agentCount">0</span></div>
+                            <div>FPS: <span id="fps">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-panel">
+                    <h2>Analytics Dashboard</h2>
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h3>Population</h3>
+                            <div class="role-counts">
+                                <div>Normal: <span id="normalCount">0</span></div>
+                                <div>Predators: <span id="predatorCount">0</span></div>
+                                <div>Prey: <span id="preyCount">0</span></div>
+                            </div>
+                        </div>
+                        <div class="analytics-card">
+                            <h3>Distances</h3>
+                            <div>Average: <span id="avgDistance">0</span> units</div>
+                            <div>Predator-Prey: <span id="predatorPreyDistance">0</span> units</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h3>Swarm Metrics</h3>
+                            <div>Cohesion: <span id="cohesionScore">0</span>%</div>
+                            <div>Alignment: <span id="alignmentScore">0</span>%</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h3>Interaction Zones</h3>
+                            <div>Close: <span id="closeInteractions">0</span></div>
+                            <div>Medium: <span id="mediumInteractions">0</span></div>
+                            <div>Far: <span id="farInteractions">0</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -85,5 +117,6 @@
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
     <script src="{{ url_for('static', filename='js/swarm.js') }}"></script>
     <script src="{{ url_for('static', filename='js/controls.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
 </body>
 </html>
