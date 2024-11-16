@@ -43,6 +43,7 @@ class SwarmControls {
                 reader.onload = (e) => {
                     try {
                         this.currentRecording = JSON.parse(e.target.result);
+                        console.log('Recording loaded:', this.currentRecording.length, 'states');
                     } catch (error) {
                         console.error('Error parsing recording file:', error);
                     }
@@ -58,6 +59,8 @@ class SwarmControls {
                     action: 'start_playback',
                     recording: this.currentRecording
                 });
+            } else {
+                console.log('No recording loaded');
             }
         };
 
@@ -65,9 +68,17 @@ class SwarmControls {
             window.swarmWS.send({ type: 'command', action: 'stop_playback' });
         };
 
-        // Simplified parameter sliders
+        // Enhanced parameter sliders with detailed logging
         const parameters = [
-            {id: 'agentCount', valueId: 'agentCountValue', min: 5, max: 50, step: 1},
+            {
+                id: 'agentCount',
+                valueId: 'agentCountValue',
+                min: 5,
+                max: 50,
+                step: 1,
+                immediate: true,
+                initialValue: 50
+            },
             {id: 'agentSpeed', valueId: 'speedValue', min: 1, max: 10, step: 0.5},
             {id: 'swarmCohesion', valueId: 'cohesionValue', min: 1, max: 10, step: 1},
             {id: 'swarmAlignment', valueId: 'alignmentValue', min: 1, max: 10, step: 1},
@@ -80,15 +91,61 @@ class SwarmControls {
             const valueDisplay = document.getElementById(param.valueId);
             
             if (slider && valueDisplay) {
+                // Set slider attributes
                 slider.min = param.min;
                 slider.max = param.max;
                 slider.step = param.step;
+                slider.value = param.initialValue || slider.value;
                 
+                // Set initial value
+                if (param.initialValue !== undefined) {
+                    valueDisplay.textContent = param.initialValue;
+                    console.log(`Initialized ${param.id} slider with value: ${param.initialValue}`);
+                    
+                    // Send initial parameter update for agent count
+                    if (param.id === 'agentCount') {
+                        console.log(`Sending initial agent count update: ${param.initialValue}`);
+                        this.sendParameterUpdate(param.id, param.initialValue);
+                    }
+                }
+
+                // Update display and handle parameter changes with enhanced logging
                 slider.oninput = () => {
-                    const value = parseFloat(slider.value);
-                    valueDisplay.textContent = value;
-                    this.sendParameterUpdate(param.id, value);
+                    try {
+                        const value = parseFloat(slider.value);
+                        console.log(`${param.id} slider value changed to: ${value}`);
+
+                        // Additional validation for agent count
+                        if (param.id === 'agentCount') {
+                            if (value < param.min || value > param.max) {
+                                console.error(`Invalid agent count: ${value}. Must be between ${param.min} and ${param.max}`);
+                                return;
+                            }
+                            console.log(`Validating agent count: ${value} (range: ${param.min}-${param.max})`);
+                        }
+
+                        // Update display
+                        valueDisplay.textContent = value;
+
+                        // Handle parameter updates with proper logging
+                        if (param.immediate || param.id === 'agentCount') {
+                            console.log(`Sending immediate parameter update for ${param.id}: ${value}`);
+                            this.sendParameterUpdate(param.id, value);
+                        } else {
+                            if (this.parameterUpdateTimeout) {
+                                clearTimeout(this.parameterUpdateTimeout);
+                            }
+                            this.parameterUpdateTimeout = setTimeout(() => {
+                                console.log(`Sending debounced parameter update for ${param.id}: ${value}`);
+                                this.sendParameterUpdate(param.id, value);
+                            }, 100);
+                        }
+                    } catch (error) {
+                        console.error(`Error handling slider change for ${param.id}:`, error);
+                    }
                 };
+            } else {
+                console.error(`Could not find slider or value display elements for ${param.id}`);
             }
         });
 
@@ -115,11 +172,17 @@ class SwarmControls {
     }
 
     sendParameterUpdate(name, value) {
-        window.swarmWS.send({
-            type: 'parameter',
-            name: name,
-            value: value
-        });
+        try {
+            const message = {
+                type: 'parameter',
+                name: name,
+                value: value
+            };
+            console.log(`Sending parameter update message:`, message);
+            window.swarmWS.send(message);
+        } catch (error) {
+            console.error(`Error sending parameter update for ${name}:`, error);
+        }
     }
 
     downloadRecording(recording) {
@@ -135,6 +198,7 @@ class SwarmControls {
     }
 }
 
+// Initialize controls when document is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new SwarmControls();
 });

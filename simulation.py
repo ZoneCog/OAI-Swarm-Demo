@@ -108,59 +108,25 @@ class SwarmSimulation:
         logger.info("Simulation thread started")
 
     def _validate_agent_count(self, count: int) -> int:
-        """Validate and adjust agent count to be within bounds"""
-        logger.debug(f"Validating agent count request: {count}")
-        
-        if not isinstance(count, int):
-            count = int(count)
-            logger.warning(f"Agent count converted to integer: {count}")
-        
-        if count < self.MIN_AGENTS:
-            logger.warning(f"Agent count {count} below minimum ({self.MIN_AGENTS}), adjusting")
-            return self.MIN_AGENTS
-        elif count > self.MAX_AGENTS:
-            logger.warning(f"Agent count {count} above maximum ({self.MAX_AGENTS}), adjusting")
-            return self.MAX_AGENTS
-        
-        logger.debug(f"Agent count {count} validated successfully")
-        return count
+        """Simple agent count validation"""
+        count = int(count)
+        return max(min(count, self.MAX_AGENTS), self.MIN_AGENTS)
 
     def set_parameter(self, name: str, value: float) -> bool:
-        """Update simulation parameter with enhanced validation and logging"""
+        """Update simulation parameter with simplified validation"""
         try:
             if name not in self.parameters:
-                logger.warning(f"Attempted to set unknown parameter: {name}")
                 return False
 
-            old_value = self.parameters[name]
-            new_value = float(value)
-            
-            # Special handling for agent count
             if name == 'agentCount':
-                new_value = self._validate_agent_count(int(new_value))
-                logger.info(f"Agent count parameter update: {old_value} -> {new_value}")
-                
-                if new_value != old_value:
-                    logger.info(f"Applying new agent count: {new_value}")
-                    self.parameters[name] = new_value
-                    self.reset()
-                    logger.info(f"Reset completed with new agent count: {len(self.agents)}")
+                self.parameters[name] = self._validate_agent_count(int(value))
+                self.reset()
                 return True
             
-            # Validate other parameters
-            if new_value <= 0:
-                logger.warning(f"Invalid {name} value: {new_value} (must be positive)")
-                return False
-            
-            self.parameters[name] = new_value
-            logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
+            self.parameters[name] = float(value)
             return True
             
-        except ValueError as e:
-            logger.error(f"Error setting parameter {name}: {str(e)}")
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error setting parameter {name}: {str(e)}")
+        except (ValueError, TypeError):
             return False
 
     def reset(self):
@@ -168,51 +134,36 @@ class SwarmSimulation:
         self.agents = []
         agent_count = self._validate_agent_count(int(self.parameters['agentCount']))
         
-        predator_count = max(2, int(agent_count * 0.1))  # 10% predators
-        prey_count = max(3, int(agent_count * 0.15))     # 15% prey
+        predator_count = max(2, int(agent_count * 0.1))
+        prey_count = max(3, int(agent_count * 0.15))
         normal_count = agent_count - (predator_count + prey_count)
         
-        logger.info(f"Resetting simulation with {agent_count} total agents:")
-        logger.info(f"- Predators: {predator_count}")
-        logger.info(f"- Prey: {prey_count}")
-        logger.info(f"- Normal: {normal_count}")
-
         # Create predators
-        for i in range(predator_count):
+        for _ in range(predator_count):
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
                 y=random.uniform(100, 500),
                 angle=random.uniform(0, 2 * math.pi),
                 role='predator'
             ))
-        logger.debug(f"Created {predator_count} predator agents")
             
         # Create prey
-        for i in range(prey_count):
+        for _ in range(prey_count):
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
                 y=random.uniform(100, 500),
                 angle=random.uniform(0, 2 * math.pi),
                 role='prey'
             ))
-        logger.debug(f"Created {prey_count} prey agents")
             
         # Create normal agents
-        for i in range(normal_count):
+        for _ in range(normal_count):
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
                 y=random.uniform(100, 500),
                 angle=random.uniform(0, 2 * math.pi),
                 role='normal'
             ))
-        logger.debug(f"Created {normal_count} normal agents")
-
-        # Verify final agent count
-        actual_count = len(self.agents)
-        if actual_count != agent_count:
-            logger.error(f"Agent count mismatch! Expected: {agent_count}, Actual: {actual_count}")
-        else:
-            logger.info(f"Successfully created {actual_count} total agents")
 
         self.time_accumulated = 0
         self.stop_recording()
