@@ -299,6 +299,8 @@ class SwarmSimulation:
             self._update_wave(speed, dt)
         elif self.current_pattern == 'custom':
             self._update_custom(speed, dt)
+        elif self.current_pattern == 'collective_action':
+            self._update_collective_action(speed, dt)
         elif self.current_pattern == 'flocking':
             self._update_flocking(speed, cohesion, alignment)
         elif self.current_pattern == 'circle':
@@ -310,6 +312,108 @@ class SwarmSimulation:
         for agent in self.agents:
             agent.x = agent.x % 800
             agent.y = agent.y % 600
+
+    def _update_collective_action(self, speed: float, dt: float):
+        """Collective action behavior where prey organize to chase predators"""
+        # Count prey agents
+        prey_agents = [agent for agent in self.agents if agent.role == 'prey']
+        num_prey = len(prey_agents)
+        organize_threshold = len(self.agents) * 0.4  # 40% threshold for organizing
+
+        # Initialize formation center if not exists
+        if not hasattr(self, '_formation_center'):
+            self._formation_center = {'x': 400, 'y': 300}
+
+        # If enough prey, organize and chase predators
+        if num_prey >= organize_threshold:
+            # Find center of predators
+            predator_agents = [a for a in self.agents if a.role == 'predator']
+            if predator_agents:
+                target_x = sum(a.x for a in predator_agents) / len(predator_agents)
+                target_y = sum(a.y for a in predator_agents) / len(predator_agents)
+            else:
+                target_x, target_y = 400, 300
+
+            # Move formation center towards predators
+            dx = target_x - self._formation_center['x']
+            dy = target_y - self._formation_center['y']
+            dist = math.sqrt(dx*dx + dy*dy)
+            if dist > 0:
+                self._formation_center['x'] += (dx/dist) * speed * 0.5
+                self._formation_center['y'] += (dy/dist) * speed * 0.5
+
+            # Arrange prey in arrow formation
+            formation_radius = 30 + num_prey * 2
+            for idx, agent in enumerate(prey_agents):
+                angle = (2 * math.pi * idx) / num_prey
+                # Create arrow shape by adjusting radius based on angle
+                if abs(angle - math.pi) < math.pi/3:  # Front of arrow
+                    radius = formation_radius * 0.7
+                else:  # Wings of arrow
+                    radius = formation_radius
+            
+                desired_x = self._formation_center['x'] + radius * math.cos(angle)
+                desired_y = self._formation_center['y'] + radius * math.sin(angle)
+            
+                dx = desired_x - agent.x
+                dy = desired_y - agent.y
+                target_angle = math.atan2(dy, dx)
+            
+                # Smooth angle adjustment
+                angle_diff = (target_angle - agent.angle + math.pi) % (2 * math.pi) - math.pi
+                agent.angle += angle_diff * 0.1
+            
+                # Move agent
+                agent.x += math.cos(agent.angle) * speed * 1.2
+                agent.y += math.sin(agent.angle) * speed * 1.2
+
+            # Convert nearby normal agents to prey
+            for agent in prey_agents:
+                for other in self.agents:
+                    if other.role == 'normal':
+                        dx = other.x - agent.x
+                        dy = other.y - agent.y
+                        dist = math.sqrt(dx*dx + dy*dy)
+                        if dist < 50:  # Conversion radius
+                            other.role = 'prey'
+
+        else:
+            # Standard prey behavior when not organized
+            for agent in prey_agents:
+                # Move randomly
+                agent.x += math.cos(agent.angle) * speed
+                agent.y += math.sin(agent.angle) * speed
+                agent.angle += random.uniform(-0.1, 0.1)
+
+        # Update predators - they now flee from organized prey
+        predator_agents = [a for a in self.agents if a.role == 'predator']
+        if num_prey >= organize_threshold:
+            for agent in predator_agents:
+                dx = agent.x - self._formation_center['x']
+                dy = agent.y - self._formation_center['y']
+                dist = math.sqrt(dx*dx + dy*dy)
+                if dist < 200:  # Flee distance
+                    flee_angle = math.atan2(dy, dx)
+                    agent.angle = flee_angle
+                    agent.x += math.cos(agent.angle) * speed * 1.5
+                    agent.y += math.sin(agent.angle) * speed * 1.5
+                else:
+                    agent.x += math.cos(agent.angle) * speed
+                    agent.y += math.sin(agent.angle) * speed
+                    agent.angle += random.uniform(-0.1, 0.1)
+        else:
+            # Standard predator behavior
+            for agent in predator_agents:
+                agent.x += math.cos(agent.angle) * speed
+                agent.y += math.sin(agent.angle) * speed
+                agent.angle += random.uniform(-0.1, 0.1)
+
+        # Update normal agents
+        for agent in self.agents:
+            if agent.role == 'normal':
+                agent.x += math.cos(agent.angle) * speed
+                agent.y += math.sin(agent.angle) * speed
+                agent.angle += random.uniform(-0.1, 0.1)
 
     def _update_predator_prey(self, speed: float, dt: float):
         """Predator-prey behavior pattern"""
@@ -489,35 +593,6 @@ class SwarmSimulation:
         if is_valid:
             self.custom_behavior = code
         return is_valid, message
-
-    def _update(self, dt: float):
-        """Update agent positions and behaviors"""
-        base_speed = max(self.parameters['agentSpeed'], 2)
-        speed = base_speed * 4.0 * dt
-        cohesion = self.parameters['swarmCohesion'] * 0.02
-        alignment = self.parameters['swarmAlignment'] * 0.02
-
-        if self.current_pattern == 'predator_prey':
-            self._update_predator_prey(speed, dt)
-        elif self.current_pattern == 'vortex':
-            self._update_vortex(speed, dt)
-        elif self.current_pattern == 'split_merge':
-            self._update_split_merge(speed, dt)
-        elif self.current_pattern == 'wave':
-            self._update_wave(speed, dt)
-        elif self.current_pattern == 'custom':
-            self._update_custom(speed, dt)
-        elif self.current_pattern == 'flocking':
-            self._update_flocking(speed, cohesion, alignment)
-        elif self.current_pattern == 'circle':
-            self._update_circle(speed)
-        elif self.current_pattern == 'scatter':
-            self._update_scatter(speed)
-
-        # Apply position updates and wrapping
-        for agent in self.agents:
-            agent.x = agent.x % 800
-            agent.y = agent.y % 600
 
     def _update_flocking(self, speed: float, cohesion: float, alignment: float):
         """Original flocking behavior"""

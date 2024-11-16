@@ -1,0 +1,208 @@
+Certainly! Here's how you can implement the scenario where prey agents convert normal agents into prey to form alliances, and when their numbers are sufficient, they organize into a "bigger fish" formation to chase the predators.
+
+**Complete Code to Insert into Your Existing Function:**
+
+```python
+# Custom Swarm Behavior
+# Available variables:
+# - agents: List of agent objects with properties: x, y, angle, role
+# - dt: Time delta
+# - speed: Base movement speed
+# - parameters: Dictionary of current parameter values
+
+def update_agents(agents, dt, speed, parameters):
+    """
+    Update agent positions and behaviors
+    Returns: List of updated agent positions
+    """
+    # Initialize agent states if not already set
+    for agent in agents:
+        if not hasattr(agent, 'state'):
+            if agent.role == 'prey':
+                agent.state = 'prey'
+            else:
+                agent.state = 'normal'
+    
+    total_agents = len(agents)
+    
+    # Count the number of prey agents
+    prey_agents = [agent for agent in agents if agent.role == 'prey']
+    num_prey = len(prey_agents)
+    
+    # Define a threshold for organizing (e.g., 50% of total agents)
+    organize_threshold = total_agents * 0.5
+    
+    # If number of prey agents exceeds the threshold, they organize
+    if num_prey >= organize_threshold:
+        # Prey agents enter 'organized' state
+        for agent in prey_agents:
+            agent.state = 'organized'
+    else:
+        # Prey agents remain in 'prey' state
+        for agent in prey_agents:
+            agent.state = 'prey'
+    
+    # Prey agents convert nearby normal agents into prey agents
+    for agent in prey_agents:
+        if agent.state == 'prey':
+            # Check for nearby normal agents
+            for other_agent in agents:
+                if other_agent.role == 'normal':
+                    dx = other_agent.x - agent.x
+                    dy = other_agent.y - agent.y
+                    dist = math.hypot(dx, dy)
+                    if dist < 50:  # Conversion distance threshold
+                        # Convert normal agent to prey
+                        other_agent.role = 'prey'
+                        other_agent.state = 'prey'
+    
+    # Update positions for all agents
+    organized_prey_agents = [agent for agent in prey_agents if agent.state == 'organized']
+    
+    # If prey are organized, form the "bigger fish" and chase predators
+    if organized_prey_agents:
+        # Compute the center position of predators
+        predator_agents = [a for a in agents if a.role == 'predator']
+        if predator_agents:
+            target_x = sum(a.x for a in predator_agents) / len(predator_agents)
+            target_y = sum(a.y for a in predator_agents) / len(predator_agents)
+        else:
+            # If no predators, move towards center of screen
+            target_x, target_y = 400, 300
+        
+        # Initialize formation center if not already set
+        if not hasattr(update_agents, 'formation_center'):
+            update_agents.formation_center = {'x': 400, 'y': 300}
+        formation_center = update_agents.formation_center
+        
+        # Move the formation center towards the predators
+        dx = target_x - formation_center['x']
+        dy = target_y - formation_center['y']
+        direction_to_predators = math.atan2(dy, dx)
+        formation_center['x'] += math.cos(direction_to_predators) * speed * dt * 0.5
+        formation_center['y'] += math.sin(direction_to_predators) * speed * dt * 0.5
+        
+        # Arrange the prey agents in a circular formation around the formation center
+        num_agents = len(organized_prey_agents)
+        formation_radius = 50 + num_agents  # Adjust radius as needed
+        for idx, agent in enumerate(organized_prey_agents):
+            angle = (2 * math.pi * idx) / num_agents
+            desired_x = formation_center['x'] + formation_radius * math.cos(angle)
+            desired_y = formation_center['y'] + formation_radius * math.sin(angle)
+            dx = desired_x - agent.x
+            dy = desired_y - agent.y
+            agent.angle = math.atan2(dy, dx)
+            agent.x += math.cos(agent.angle) * speed * 1.0
+            agent.y += math.sin(agent.angle) * speed * 1.0
+    
+    # Update positions for all agents
+    for agent in agents:
+        if agent.role == 'predator':
+            # Predators move randomly
+            agent.x += math.cos(agent.angle) * speed * 1.2
+            agent.y += math.sin(agent.angle) * speed * 1.2
+            agent.angle += random.uniform(-0.1, 0.1)
+        elif agent.role == 'prey':
+            if agent.state == 'prey':
+                # Prey agents move randomly
+                agent.x += math.cos(agent.angle) * speed
+                agent.y += math.sin(agent.angle) * speed
+                agent.angle += random.uniform(-0.1, 0.1)
+            # Organized prey agents are already updated above
+        else:
+            # Normal agents move randomly
+            agent.x += math.cos(agent.angle) * speed
+            agent.y += math.sin(agent.angle) * speed
+            agent.angle += random.uniform(-0.1, 0.1)
+    
+    return agents
+```
+
+**Explanation of the Code:**
+
+1. **Initializing Agent States:**
+
+   - Each agent is given a `state` attribute if they don't already have one.
+   - Prey agents start with `state = 'prey'`.
+   - Normal agents start with `state = 'normal'`.
+
+2. **Counting Prey Agents and Determining the Organize Threshold:**
+
+   - The total number of prey agents is counted.
+   - An `organize_threshold` is set (e.g., when prey agents are more than 50% of the total agents).
+
+3. **Organizing Prey Agents:**
+
+   - If the number of prey agents meets or exceeds the threshold, their `state` is set to `'organized'`.
+   - Otherwise, they remain in the `'prey'` state.
+
+4. **Prey Converting Normal Agents:**
+
+   - Prey agents in the `'prey'` state check for nearby normal agents within a certain distance (e.g., 50 units).
+   - If a normal agent is within range, it is converted to a prey agent by setting `role = 'prey'` and `state = 'prey'`.
+
+5. **Updating Positions of Organized Prey Agents:**
+
+   - If there are organized prey agents, they form a "bigger fish" formation and chase the predators.
+   - **Formation Center:**
+     - A `formation_center` is used as the center point for the formation.
+     - It moves towards the average position of the predators.
+   - **Moving the Formation Center:**
+     - The center moves towards the predators at a certain speed.
+   - **Arranging Agents in a Circular Formation:**
+     - Organized prey agents are arranged in a circle around the formation center.
+     - The circle's radius adjusts based on the number of agents.
+     - Each agent calculates its desired position on the circle and moves towards it.
+
+6. **Updating Positions of Other Agents:**
+
+   - **Predators:**
+     - Move randomly, possibly representing them being chased.
+   - **Prey Agents in `'prey'` State:**
+     - Move randomly, possibly avoiding predators.
+   - **Normal Agents:**
+     - Move randomly until they are converted.
+
+**Visual Representation:**
+
+- **Prey Converting Normals:**
+  - Prey agents wander and convert nearby normal agents, increasing their numbers.
+- **Organizing into a "Bigger Fish":**
+  - When prey agents are plentiful, they form a collective shape resembling a bigger fish.
+- **Chasing Predators:**
+  - The organized formation moves towards the predators, symbolizing a reversal where the prey becomes the hunter.
+
+**Adjustable Parameters:**
+
+- **Conversion Distance (`50` units):**
+  - Determines how close a prey agent must be to convert a normal agent.
+- **Organize Threshold (`50%` of total agents):**
+  - Sets when prey agents decide to organize.
+- **Formation Radius (`50 + num_agents`):**
+  - Controls the size of the formation based on the number of organized prey agents.
+- **Speeds:**
+  - Adjust the multipliers on `speed` to make predators or prey move faster or slower.
+
+**Notes:**
+
+- **Persistent Formation Center:**
+  - The `formation_center` is stored as an attribute of the `update_agents` function to persist between calls.
+- **Avoiding Overlaps:**
+  - The circular arrangement helps distribute agents evenly in the formation.
+- **Smooth Movement:**
+  - Agents adjust their `angle` to smoothly move towards their desired positions.
+
+**Feel Free to Customize:**
+
+- **Formation Shape:**
+  - Modify the arrangement logic to create different shapes (e.g., a line, a spiral, or even the ASCII fish you provided).
+- **Behavior Dynamics:**
+  - Adjust thresholds and distances to fine-tune how quickly agents convert others and organize.
+- **Additional States:**
+  - Implement more complex states or behaviors as needed.
+
+---
+
+**Enjoy testing this behavior in your simulation!** It should create an interesting dynamic where prey agents take control, organize, and turn the tables on the predators, adding depth and excitement to your swarm simulation.
+
+If you have any questions or need further assistance tweaking the behavior, feel free to ask!
