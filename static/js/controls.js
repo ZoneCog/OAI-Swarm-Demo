@@ -66,7 +66,7 @@ class SwarmControls {
             window.swarmWS.send({ type: 'command', action: 'stop_playback' });
         };
 
-        // Parameter sliders with unified debounced updates
+        // Parameter sliders with unified handling
         const parameters = [
             {id: 'agentCount', valueId: 'agentCountValue', min: 1, max: 200, step: 1},
             {id: 'agentSpeed', valueId: 'speedValue', min: 1, max: 10, step: 0.5},
@@ -85,18 +85,10 @@ class SwarmControls {
                 slider.max = param.max;
                 slider.step = param.step;
                 
-                // Unified slider handler with debounced updates
                 slider.oninput = () => {
                     const value = parseFloat(slider.value);
                     valueDisplay.textContent = value;
-                    console.log(`${param.id} slider changed:`, value);
-                    
-                    if (this.parameterUpdateTimeout) {
-                        clearTimeout(this.parameterUpdateTimeout);
-                    }
-                    this.parameterUpdateTimeout = setTimeout(() => {
-                        this.sendParameterUpdate(param.id, value);
-                    }, 100);
+                    this.sendParameterUpdate(param.id, value);
                 };
             }
         });
