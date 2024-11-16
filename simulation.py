@@ -3,8 +3,13 @@ import time
 import threading
 import random
 import json
+import logging
 from dataclasses import dataclass
 from typing import List, Dict
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Agent:
@@ -90,23 +95,48 @@ class SwarmSimulation:
     def reset(self):
         """Reset simulation with new agents"""
         self.agents = []
-        agent_count = int(self.parameters['agentCount'])
+        agent_count = max(5, int(self.parameters['agentCount']))
         predator_count = max(2, int(agent_count * 0.1))  # 10% predators
         prey_count = max(3, int(agent_count * 0.15))     # 15% prey
+        normal_count = agent_count - (predator_count + prey_count)
         
-        for i in range(agent_count):
-            role = 'predator' if i < predator_count else 'prey' if i < (predator_count + prey_count) else 'normal'
+        logger.debug(f"Initializing simulation with {agent_count} agents:")
+        logger.debug(f"- Predators: {predator_count}")
+        logger.debug(f"- Prey: {prey_count}")
+        logger.debug(f"- Normal: {normal_count}")
+
+        # Create predators
+        for i in range(predator_count):
             self.agents.append(Agent(
                 x=random.uniform(100, 700),
                 y=random.uniform(100, 500),
                 angle=random.uniform(0, 2 * math.pi),
-                role=role
+                role='predator'
             ))
+            
+        # Create prey
+        for i in range(prey_count):
+            self.agents.append(Agent(
+                x=random.uniform(100, 700),
+                y=random.uniform(100, 500),
+                angle=random.uniform(0, 2 * math.pi),
+                role='prey'
+            ))
+            
+        # Create normal agents
+        for i in range(normal_count):
+            self.agents.append(Agent(
+                x=random.uniform(100, 700),
+                y=random.uniform(100, 500),
+                angle=random.uniform(0, 2 * math.pi),
+                role='normal'
+            ))
+
         self.time_accumulated = 0
         self.stop_recording()
         self.stop_playback()
         self.analytics.reset_metrics()
-        print("Simulation reset with", len(self.agents), "agents")
+        logger.info(f"Simulation reset complete with {len(self.agents)} agents")
 
     def _update_analytics(self):
         """Update analytics metrics"""
@@ -213,11 +243,23 @@ class SwarmSimulation:
 
     def set_parameter(self, name: str, value: float):
         """Update simulation parameter"""
-        if name in self.parameters:
-            self.parameters[name] = float(value)
-            if name == 'agentCount':
-                self.reset()  # Reset simulation when agent count changes
-            print(f"Parameter {name} set to {value}")
+        try:
+            if name in self.parameters:
+                old_value = self.parameters[name]
+                new_value = float(value)
+                self.parameters[name] = new_value
+                logger.debug(f"Parameter {name} updated: {old_value} -> {new_value}")
+                
+                if name == 'agentCount':
+                    logger.info(f"Agent count changed to {new_value}, resetting simulation")
+                    self.reset()  # Reset simulation when agent count changes
+                return True
+            else:
+                logger.warning(f"Attempted to set unknown parameter: {name}")
+                return False
+        except ValueError as e:
+            logger.error(f"Error setting parameter {name}: {str(e)}")
+            return False
 
     def set_pattern(self, pattern: str):
         """Change swarm behavior pattern"""

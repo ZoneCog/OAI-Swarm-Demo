@@ -1,6 +1,7 @@
 class SwarmControls {
     constructor() {
         this.currentRecording = null;
+        this.parameterUpdateTimeout = null;
         this.initializeControls();
     }
 
@@ -69,7 +70,7 @@ class SwarmControls {
 
         // Parameter sliders
         const parameters = [
-            {id: 'agentCount', valueId: 'agentCountValue'},
+            {id: 'agentCount', valueId: 'agentCountValue', immediate: true},
             {id: 'agentSpeed', valueId: 'speedValue'},
             {id: 'swarmCohesion', valueId: 'cohesionValue'},
             {id: 'swarmAlignment', valueId: 'alignmentValue'},
@@ -82,16 +83,22 @@ class SwarmControls {
             const valueDisplay = document.getElementById(param.valueId);
             
             if (slider && valueDisplay) {
+                // Update display immediately when slider moves
                 slider.oninput = () => {
                     valueDisplay.textContent = slider.value;
-                };
-                
-                slider.onchange = () => {
-                    window.swarmWS.send({
-                        type: 'parameter',
-                        name: param.id,
-                        value: parseFloat(slider.value)
-                    });
+                    
+                    // For agent count, update immediately
+                    if (param.immediate) {
+                        this.sendParameterUpdate(param.id, parseFloat(slider.value));
+                    } else {
+                        // For other parameters, use debounce
+                        if (this.parameterUpdateTimeout) {
+                            clearTimeout(this.parameterUpdateTimeout);
+                        }
+                        this.parameterUpdateTimeout = setTimeout(() => {
+                            this.sendParameterUpdate(param.id, parseFloat(slider.value));
+                        }, 100);
+                    }
                 };
             }
         });
@@ -116,6 +123,20 @@ class SwarmControls {
                 this.downloadRecording(data.recording);
             }
         });
+    }
+
+    sendParameterUpdate(name, value) {
+        try {
+            const message = {
+                type: 'parameter',
+                name: name,
+                value: value
+            };
+            console.log(`Updating parameter ${name} to ${value}`);
+            window.swarmWS.send(message);
+        } catch (error) {
+            console.error(`Error updating parameter ${name}:`, error);
+        }
     }
 
     downloadRecording(recording) {
