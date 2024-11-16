@@ -18,13 +18,26 @@ class SwarmControls {
         };
 
         // Parameter sliders
-        const parameters = ['agentSpeed', 'swarmCohesion', 'swarmAlignment'];
+        const parameters = [
+            {id: 'agentSpeed', valueId: 'speedValue'},
+            {id: 'swarmCohesion', valueId: 'cohesionValue'},
+            {id: 'swarmAlignment', valueId: 'alignmentValue'}
+        ];
+        
         parameters.forEach(param => {
-            const slider = document.getElementById(param);
+            const slider = document.getElementById(param.id);
+            const valueDisplay = document.getElementById(param.valueId);
+            
+            // Update value display on input
+            slider.oninput = () => {
+                valueDisplay.textContent = slider.value;
+            };
+            
+            // Send value to server on change
             slider.onchange = () => {
                 window.swarmWS.send({
                     type: 'parameter',
-                    name: param,
+                    name: param.id,
                     value: parseFloat(slider.value)
                 });
             };

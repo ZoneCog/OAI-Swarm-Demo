@@ -63,7 +63,7 @@ class SwarmSimulation:
     def set_parameter(self, name: str, value: float):
         """Update simulation parameter"""
         if name in self.parameters:
-            self.parameters[name] = value
+            self.parameters[name] = float(value)
             print(f"Parameter {name} set to {value}")
 
     def set_pattern(self, pattern: str):
@@ -92,7 +92,6 @@ class SwarmSimulation:
                 updates_count += 1
                 if updates_count % 100 == 0:  # Log every 100 updates
                     print(f"Simulation running: {updates_count} updates completed")
-                    # Log first agent position for debugging
                     if self.agents:
                         agent = self.agents[0]
                         print(f"Sample agent position: x={agent.x:.2f}, y={agent.y:.2f}, angle={agent.angle:.2f}")
@@ -101,8 +100,9 @@ class SwarmSimulation:
 
     def _update(self, dt: float):
         """Update agent positions and behaviors"""
-        # Parameters
-        speed = self.parameters['agentSpeed'] * 2.0 * dt  # Adjusted for deltaTime
+        # Parameters with minimum speed threshold
+        base_speed = max(self.parameters['agentSpeed'], 2) # Minimum speed threshold
+        speed = base_speed * 4.0 * dt  # Increased multiplier from 2.0 to 4.0
         cohesion = self.parameters['swarmCohesion'] * 0.02
         alignment = self.parameters['swarmAlignment'] * 0.02
 
